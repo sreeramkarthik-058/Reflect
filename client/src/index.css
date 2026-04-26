@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colours */
+  --color-bg:        #0C0C0C;
+  --color-surface:   #141414;
+  --color-elevated:  #1C1C1C;
+  --color-border:    #2A2520;
+  --color-text:      #F5F0E8;
+  --color-secondary: #A09A8E;
+  --color-muted:     #5C5650;
+  --color-gold:      #D4A96A;
+  --color-success:   #6BAE8A;
+  --color-error:     #C96A6A;
+
+  /* Typography */
+  --font-heading: 'DM Serif Display', serif;
+  --font-body:    'Sora', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+/* Base reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #0C0C0C;
+  color: #F5F0E8;
+  font-family: 'Sora', sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global focus style — gold outline, WCAG AA */
+:focus-visible {
+  outline: 2px solid #D4A96A;
+  outline-offset: 2px;
+}
