@@ -47,39 +47,34 @@ All fonts loaded from Google Fonts.
 - Semantic HTML throughout
 - ARIA labels on all icon-only buttons
 
-## What's Been Built
+## Build Phases
 
-### Phase 1 — Core Auth & Text Journaling (COMPLETE)
-- **Auth flow:** Signup, login, logout, session persistence via Supabase (`sb_publishable_` key on frontend)
-- **Today screen** (`client/src/pages/Today.jsx`): rotating prompts, auto-growing textarea, save flow, streak/total stats strip, History nav link
-- **History screen** (`client/src/pages/History.jsx`): collapsed entry pills, expand/collapse, inline edit, delete, client-side search with match highlighting
-- **Supabase schema:** `entries` table with RLS enabled; explicit `GRANT` to `authenticated`, `anon`, and `service_role` Postgres roles required
+### Phase 1 — Foundation `COMPLETE` (F01–F05, F09, F10, F16–F19)
+- Auth flow: signup, login, logout, session persistence via Supabase (`sb_publishable_` key on frontend)
+- Today screen: rotating prompts, auto-growing textarea, save flow, streak/total stats strip
+- History screen: collapsed entry pills, expand/collapse, inline edit, delete, search with match highlighting
+- Supabase: `entries` table with RLS; explicit `GRANT` to `authenticated`, `anon`, `service_role`
 
-### Phase 2 — AI Response Layer (COMPLETE)
-- **Backend:** Express server on port 3001 (`server/index.js`, `server/routes/entries.js`)
-- **Save flow:** frontend POSTs to `POST /api/entries` → backend inserts via service role key (bypasses RLS) → calls Claude Haiku → patches `ai_response` on the row → returns full entry
-- **AI column:** `ai_response text` (nullable) added to `entries` table
-- **Key separation:** `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` live in root `.env`, never exposed to frontend
-- **Model config:** all model names in `config/models.js` (`claude-haiku-4-5-20251001`); never hardcoded elsewhere
-- **Done state UX:** after save, form hides and shows the written entry + AI response side-by-side; "Write another entry" button returns to form
+### Phase 2 — AI Heart `COMPLETE` (F11–F15)
+- Every entry triggers a Claude Haiku response via backend (`server/routes/entries.js`)
+- Save flow: frontend → `POST /api/entries` → Supabase insert (service role) → Claude call → `ai_response` patched on row → full entry returned
+- Done state UX: entry text + AI response shown together; "Write another entry" returns to form
+- Model config: `config/models.js` (`claude-haiku-4-5-20251001`); never hardcoded elsewhere
+- Keys: `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in root `.env` only
 
-## Phase 1 Scope (COMPLETE)
-Features F01–F05, F09, F10, F16–F19:
-- F01: Signup
-- F02: Login
-- F03: Logout
-- F04: Session persistence
-- F05: Text entry
-- F09: Input type logged
-- F10: Timestamp on entry
-- F16: Entry history
-- F17: Collapsed entry pills
-- F18: Edit entry
-- F19: Search entries
+### Phase 3 — Admin Portal `COMPLETE` (F29–F35, F37)
+- Admin login at `/admin`: credentials verified server-side, `user_roles` checked for `role = 'admin'`
+- Session stored in `sessionStorage` as JWT; verified on every protected route via `requireAdmin` middleware
+- Dashboard: Users tab (list, status badges, disable/deactivate/reactivate, notes panel) and Activity tab (logs filterable by user, event type, date range)
+- Backend: `server/routes/admin.js` mounted at `/api/admin`; two Supabase clients (service role for DB, publishable for sign-in)
+- DB: `status` column added to `user_roles` (active / disabled / deactivated)
 
-Not in Phase 1: voice input, mood tags, AI responses.
+### Phase 4 — Product Metrics `PENDING` (F36, F38)
 
-## Phase 2 Scope (COMPLETE)
-- AI response layer wired to every text entry save
-- Backend Express server handling insert + Claude call
-- `ai_response` column on `entries` table
+### Phase 5 — Full Today Screen `PENDING` (F06, F07, F08, F20–F24)
+
+### Phase 6 — Insights `PENDING` (F25–F28)
+
+### Phase 7 — Telegram Bot `PENDING` (N01–N06)
+
+### Phase 8 — Deploy `PENDING`
