@@ -44,6 +44,7 @@ function calcStreak(entries) {
 export default function Today() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [content, setContent] = useState('')
   const [savedEntry, setSavedEntry] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -60,7 +61,15 @@ export default function Today() {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
-      if (user) await refreshStats(user.id)
+      if (user) {
+        await refreshStats(user.id)
+        const { data: roleRow } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single()
+        if (roleRow?.role === 'admin') setIsAdmin(true)
+      }
     }
     init()
   }, [])
@@ -179,6 +188,14 @@ export default function Today() {
           >
             History
           </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/dashboard"
+              className="text-sm text-secondary hover:text-text transition-colors py-2 px-3"
+            >
+              Admin
+            </Link>
+          )}
           <button
             onClick={handleLogout}
             className="text-sm text-secondary hover:text-text transition-colors py-2 px-3 -mr-3"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -587,12 +587,20 @@ export default function AdminDashboard() {
           <span className="font-heading text-2xl text-text leading-none">Reflect</span>
           <span className="text-muted text-xs tracking-widest uppercase">Admin</span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-secondary hover:text-text transition-colors py-2 px-3 -mr-3"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-1">
+          <Link
+            to="/today"
+            className="text-sm text-secondary hover:text-text transition-colors py-2 px-3"
+          >
+            ← Back to App
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-secondary hover:text-text transition-colors py-2 px-3 -mr-3"
+          >
+            Sign out
+          </button>
+        </div>
       </nav>
 
       {/* Tab bar */}
