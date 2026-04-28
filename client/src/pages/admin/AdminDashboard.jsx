@@ -18,9 +18,35 @@ function formatDateTime(iso) {
   })
 }
 
+function formatTokens(n) {
+  if (!n) return '0'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
+
+function formatCost(dollars) {
+  if (!dollars) return '$0.0000'
+  return `$${dollars.toFixed(4)}`
+}
+
 const STATUS_LABEL = { active: 'Active', disabled: 'Disabled', deactivated: 'Deactivated' }
 const STATUS_TEXT  = { active: 'text-success', disabled: 'text-muted', deactivated: 'text-error' }
 const STATUS_DOT   = { active: 'bg-success',   disabled: 'bg-muted',   deactivated: 'bg-error'  }
+
+// ── Shared components ─────────────────────────────────────────────────────────
+
+function MetricCard({ label, value, sub, accent = false }) {
+  return (
+    <div className="bg-elevated border border-border rounded px-5 py-4">
+      <p className="text-xs text-muted uppercase tracking-widest mb-3">{label}</p>
+      <p className={`font-mono text-3xl font-semibold ${accent ? 'text-gold' : 'text-text'}`}>
+        {value}
+      </p>
+      {sub && <p className="text-muted text-xs mt-1.5">{sub}</p>}
+    </div>
+  )
+}
 
 // ── API helper ─────────────────────────────────────────────────────────────────
 
@@ -119,6 +145,315 @@ function NotesPanel({ userId, onUnauthorized }) {
   )
 }
 
+// ── Metrics tab ───────────────────────────────────────────────────────────────
+
+function MetricsTab({ onUnauthorized }) {
+  const [metrics, setMetrics]         = useState(null)
+  const [metricsLoading, setMetricsLoading] = useState(true)
+  const [metricsError, setMetricsError]     = useState('')
+  const [costs, setCosts]             = useState(null)
+  const [costsLoading, setCostsLoading]     = useState(true)
+  const [costsError, setCostsError]         = useState('')
+
+  useEffect(() => { fetchAll() }, [])
+
+  async function fetchAll() {
+    setMetricsLoading(true)
+    setCostsLoading(true)
+    setMetricsError('')
+    setCostsError('')
+
+    // Run both in parallel
+    const [mRes, cRes] = await Promise.all([
+      adminFetch('/metrics').catch(() => null),
+      adminFetch('/ai-costs').catch(() => null),
+    ])
+
+    if (!mRes || mRes.status === 401) { onUnauthorized(); return }
+    if (!mRes.ok) { setMetricsError('Failed to load metrics.') }
+    else setMetrics(await mRes.json())
+    setMetricsLoading(false)
+
+    if (!cRes || cRes.status === 401) { onUnauthorized(); return }
+    if (!cRes.ok) { setCostsError('Failed to load cost data.') }
+    else setCosts(await cRes.json())
+    setCostsLoading(false)
+  }
+
+  const sectionClass = 'flex flex-col gap-5'
+  const dividerClass = 'border-t border-border pt-8 mt-2'
+
+  return (
+    <div className="flex flex-col gap-8">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl text-text">Metrics</h1>
+        <button
+          onClick={fetchAll}
+          className="text-sm text-secondary hover:text-text transition-colors py-2"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {/* ── F36: Product Metrics ──────────────────────────────────────────── */}
+      {metricsError && (
+        <p className="text-error text-sm" role="alert">{metricsError}</p>
+      )}
+
+      {metricsLoading && !metricsError && (
+        <p className="text-secondary text-sm">Loading metrics…</p>
+      )}
+
+      {metrics && (
+        <div className={sectionClass}>
+
+          {/* Top stat cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MetricCard
+              label="Total users"
+              value={metrics.total_users}
+              accent
+            />
+            <MetricCard
+              label="DAU"
+              value={metrics.dau}
+              sub="active today"
+              accent
+            />
+            <MetricCard
+              label="Total entries"
+              value={metrics.total_entries.toLocaleString()}
+            />
+            <MetricCard
+              label="Entries today"
+              value={metrics.entries_per_day.at(-1)?.count ?? 0}
+            />
+          </div>
+
+          {/* Entries per day — horizontal bar chart */}
+          <div className="bg-elevated border border-border rounded px-5 py-4">
+            <p className="text-xs text-muted uppercase tracking-widest mb-4">
+              Entries per day — last 7 days
+            </p>
+            {(() => {
+              const max = Math.max(...metrics.entries_per_day.map(d => d.count), 1)
+              return (
+                <div className="flex flex-col gap-2.5">
+                  {metrics.entries_per_day.map(row => (
+                    <div key={row.date} className="flex items-center gap-3">
+                      <span className="font-mono text-xs text-muted w-24 shrink-0">{row.date}</span>
+                      <div className="flex-1 h-6 bg-surface rounded overflow-hidden">
+                        <div
+                          className="h-full bg-gold/30 rounded transition-all duration-500"
+                          style={{ width: `${(row.count / max) * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-sm text-text w-8 text-right shrink-0">
+                        {row.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+
+          {/* Voice vs text + Streak distribution */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+            {/* Voice vs text */}
+            <div className="bg-elevated border border-border rounded px-5 py-4">
+              <p className="text-xs text-muted uppercase tracking-widest mb-4">Input type split</p>
+              <div className="flex flex-col gap-2">
+                {Object.entries(metrics.input_type).length === 0 && (
+                  <p className="text-muted text-sm">No entries yet.</p>
+                )}
+                {Object.entries(metrics.input_type).map(([type, count]) => {
+                  const total = Object.values(metrics.input_type).reduce((a, b) => a + b, 0)
+                  const pct = total ? Math.round((count / total) * 100) : 0
+                  return (
+                    <div key={type} className="flex items-center gap-3">
+                      <span className="text-sm text-secondary capitalize w-12 shrink-0">{type}</span>
+                      <div className="flex-1 h-5 bg-surface rounded overflow-hidden">
+                        <div
+                          className="h-full bg-gold/25 rounded"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-sm text-text w-16 text-right shrink-0">
+                        {count} <span className="text-muted text-xs">({pct}%)</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Streak distribution */}
+            <div className="bg-elevated border border-border rounded px-5 py-4">
+              <p className="text-xs text-muted uppercase tracking-widest mb-4">
+                Streak distribution
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'No streak',  key: 'zero', sub: '0 days' },
+                  { label: 'Short',      key: 'low',  sub: '1–3 days' },
+                  { label: 'Building',   key: 'mid',  sub: '4–7 days' },
+                  { label: 'Strong',     key: 'high', sub: '7+ days' },
+                ].map(({ label, key, sub }) => (
+                  <div key={key} className="bg-surface border border-border rounded px-3 py-3">
+                    <p className="font-mono text-2xl text-text font-semibold">
+                      {metrics.streak_distribution[key]}
+                    </p>
+                    <p className="text-xs text-secondary mt-1">{label}</p>
+                    <p className="text-xs text-muted">{sub}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Retention cohorts */}
+          <div className="bg-elevated border border-border rounded overflow-hidden">
+            <div className="px-5 py-3 border-b border-border">
+              <p className="text-xs text-muted uppercase tracking-widest">Retention cohorts</p>
+            </div>
+            <div className="grid grid-cols-[1fr_80px_80px_80px] gap-4 px-5 py-2.5 bg-surface border-b border-border">
+              <span className="text-xs text-muted">Cohort</span>
+              <span className="text-xs text-muted">Users</span>
+              <span className="text-xs text-muted">Wrote</span>
+              <span className="text-xs text-muted">Retention</span>
+            </div>
+            {[
+              { label: 'This week',  key: 'this_week' },
+              { label: 'Last week',  key: 'last_week' },
+              { label: 'Last month', key: 'last_month' },
+            ].map(({ label, key }) => {
+              const c = metrics.retention_cohorts[key]
+              return (
+                <div
+                  key={key}
+                  className="grid grid-cols-[1fr_80px_80px_80px] gap-4 px-5 py-3.5 border-b border-border last:border-0"
+                >
+                  <span className="text-sm text-text">{label}</span>
+                  <span className="font-mono text-sm text-text">{c.total}</span>
+                  <span className="font-mono text-sm text-text">{c.retained}</span>
+                  <span className={`font-mono text-sm font-medium ${
+                    c.pct >= 70 ? 'text-success' : c.pct >= 40 ? 'text-gold' : 'text-muted'
+                  }`}>
+                    {c.total === 0 ? '—' : `${c.pct}%`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── F38: AI Cost Tracker ──────────────────────────────────────────── */}
+      <div className={dividerClass}>
+        <p className="font-heading text-xl text-text mb-5">AI Cost Tracker</p>
+
+        {costsError && (
+          <p className="text-error text-sm" role="alert">{costsError}</p>
+        )}
+
+        {costsLoading && !costsError && (
+          <p className="text-secondary text-sm">Loading cost data…</p>
+        )}
+
+        {costs && (
+          <div className="flex flex-col gap-5">
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MetricCard
+                label="Today"
+                value={formatCost(costs.today.cost)}
+                sub={`${formatTokens(costs.today.tokens)} tokens`}
+                accent
+              />
+              <MetricCard
+                label="This week"
+                value={formatCost(costs.week.cost)}
+                sub={`${formatTokens(costs.week.tokens)} tokens`}
+              />
+              <MetricCard
+                label="This month"
+                value={formatCost(costs.month.cost)}
+                sub={`${formatTokens(costs.month.tokens)} tokens`}
+              />
+              <MetricCard
+                label="Projected month"
+                value={formatCost(costs.projected_month.cost)}
+                sub={`est. ${formatTokens(costs.projected_month.tokens)} tokens`}
+              />
+            </div>
+
+            {/* Assumptions note */}
+            <p className="text-muted text-xs">
+              Cost assumes {costs.assumptions.input_fraction * 100}% input tokens
+              (${costs.assumptions.input_cost_per_m}/M) and{' '}
+              {costs.assumptions.output_fraction * 100}% output tokens
+              (${costs.assumptions.output_cost_per_m}/M). Entries before Phase 4 have no token data.
+            </p>
+
+            {/* Per-day table — last 14 days with any activity */}
+            <div className="border border-border rounded overflow-hidden">
+              <div className="grid grid-cols-[140px_1fr_80px_100px_100px] gap-4 px-5 py-2.5 bg-surface border-b border-border">
+                <span className="text-xs text-muted uppercase tracking-widest">Date</span>
+                <span className="text-xs text-muted uppercase tracking-widest">Usage bar</span>
+                <span className="text-xs text-muted uppercase tracking-widest">Entries</span>
+                <span className="text-xs text-muted uppercase tracking-widest">Tokens</span>
+                <span className="text-xs text-muted uppercase tracking-widest">Cost</span>
+              </div>
+
+              {(() => {
+                const last14 = costs.per_day.slice(-14).reverse()
+                const maxTokens = Math.max(...last14.map(d => d.tokens), 1)
+                const hasAnyData = last14.some(d => d.tokens > 0)
+
+                if (!hasAnyData) {
+                  return (
+                    <p className="px-5 py-6 text-secondary text-sm">
+                      No token data yet. Save an entry to start tracking.
+                    </p>
+                  )
+                }
+
+                return last14.map(row => (
+                  <div
+                    key={row.date}
+                    className="grid grid-cols-[140px_1fr_80px_100px_100px] gap-4 px-5 py-3 border-b border-border last:border-0 hover:bg-elevated/40 transition-colors"
+                  >
+                    <span className="font-mono text-xs text-muted self-center">{row.date}</span>
+                    <div className="self-center h-4 bg-surface rounded overflow-hidden">
+                      <div
+                        className="h-full bg-gold/30 rounded"
+                        style={{ width: `${(row.tokens / maxTokens) * 100}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-sm text-secondary self-center">{row.entries}</span>
+                    <span className="font-mono text-sm text-text self-center">
+                      {formatTokens(row.tokens)}
+                    </span>
+                    <span className={`font-mono text-sm self-center ${row.cost > 0 ? 'text-gold' : 'text-muted'}`}>
+                      {formatCost(row.cost)}
+                    </span>
+                  </div>
+                ))
+              })()}
+            </div>
+
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main dashboard ────────────────────────────────────────────────────────────
 
 const EMPTY_FILTERS = { user_id: '', event_type: '', from: '', to: '' }
@@ -128,18 +463,18 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users')
 
   // Users
-  const [users, setUsers] = useState([])
+  const [users, setUsers]               = useState([])
   const [usersLoading, setUsersLoading] = useState(true)
-  const [usersError, setUsersError] = useState('')
+  const [usersError, setUsersError]     = useState('')
   const [expandedUser, setExpandedUser] = useState(null)
   const [statusUpdating, setStatusUpdating] = useState({})
 
   // Activity logs
-  const [logs, setLogs] = useState([])
-  const [logsLoading, setLogsLoading] = useState(false)
-  const [logsError, setLogsError] = useState('')
-  const [logsFetched, setLogsFetched] = useState(false)
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [logs, setLogs]                 = useState([])
+  const [logsLoading, setLogsLoading]   = useState(false)
+  const [logsError, setLogsError]       = useState('')
+  const [logsFetched, setLogsFetched]   = useState(false)
+  const [filters, setFilters]           = useState(EMPTY_FILTERS)
 
   function handleUnauthorized() {
     sessionStorage.removeItem('adminToken')
@@ -193,17 +528,15 @@ export default function AdminDashboard() {
   }
 
   // ── Activity logs ──
-  // Accepts an explicit filter object to avoid stale-closure bugs when called
-  // immediately after a setFilters() call (e.g. the Clear button).
 
   async function fetchLogs(f = filters) {
     setLogsLoading(true)
     setLogsError('')
     const params = new URLSearchParams()
-    if (f.user_id)     params.set('user_id', f.user_id)
-    if (f.event_type)  params.set('event_type', f.event_type)
-    if (f.from)        params.set('from', f.from)
-    if (f.to)          params.set('to', f.to)
+    if (f.user_id)    params.set('user_id', f.user_id)
+    if (f.event_type) params.set('event_type', f.event_type)
+    if (f.from)       params.set('from', f.from)
+    if (f.to)         params.set('to', f.to)
     try {
       const res = await adminFetch(`/activity-logs?${params}`)
       if (res.status === 401) { handleUnauthorized(); return }
@@ -245,8 +578,6 @@ export default function AdminDashboard() {
     'bg-elevated border border-border rounded px-3 py-2 text-sm text-text placeholder:text-muted ' +
     'focus:border-gold focus:outline-none transition-colors'
 
-  // ── Render ──
-
   return (
     <div className="min-h-screen bg-bg flex flex-col">
 
@@ -268,6 +599,7 @@ export default function AdminDashboard() {
       <div className="border-b border-border px-6 flex gap-6">
         <button className={tabClass('users')}    onClick={() => setActiveTab('users')}>Users</button>
         <button className={tabClass('activity')} onClick={() => setActiveTab('activity')}>Activity</button>
+        <button className={tabClass('metrics')}  onClick={() => setActiveTab('metrics')}>Metrics</button>
       </div>
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-8">
@@ -292,17 +624,11 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {usersLoading && (
-              <p className="text-secondary text-sm">Loading users…</p>
-            )}
-            {usersError && (
-              <p className="text-error text-sm" role="alert">{usersError}</p>
-            )}
+            {usersLoading && <p className="text-secondary text-sm">Loading users…</p>}
+            {usersError && <p className="text-error text-sm" role="alert">{usersError}</p>}
 
             {!usersLoading && !usersError && (
               <div className="border border-border rounded overflow-hidden">
-
-                {/* Header row */}
                 <div className="grid grid-cols-[2fr_110px_64px_130px_200px] gap-4 px-5 py-2.5 bg-surface border-b border-border">
                   <span className="text-xs text-muted uppercase tracking-widest">User</span>
                   <span className="text-xs text-muted uppercase tracking-widest">Status</span>
@@ -317,11 +643,8 @@ export default function AdminDashboard() {
 
                 {users.map(user => (
                   <div key={user.id} className="border-b border-border last:border-0">
-
-                    {/* User row */}
                     <div className="grid grid-cols-[2fr_110px_64px_130px_200px] gap-4 px-5 py-4 items-center hover:bg-elevated/40 transition-colors">
 
-                      {/* Name + email + notes toggle */}
                       <div>
                         <button
                           onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
@@ -339,7 +662,6 @@ export default function AdminDashboard() {
                         </button>
                       </div>
 
-                      {/* Status badge */}
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[user.status] || 'bg-muted'}`}
@@ -350,48 +672,39 @@ export default function AdminDashboard() {
                         </span>
                       </div>
 
-                      {/* Entry count */}
                       <span className="font-mono text-sm text-text">{user.entry_count}</span>
-
-                      {/* Last active */}
                       <span className="text-secondary text-sm">{formatDate(user.last_active)}</span>
 
-                      {/* Actions */}
                       <div className="flex items-center gap-3">
                         {statusUpdating[user.id] ? (
                           <span className="text-muted text-xs">Updating…</span>
+                        ) : user.status !== 'active' ? (
+                          <button
+                            onClick={() => updateStatus(user.id, 'active')}
+                            className="text-xs font-medium text-success hover:opacity-75 transition-opacity py-1"
+                          >
+                            Reactivate
+                          </button>
                         ) : (
                           <>
-                            {user.status !== 'active' ? (
-                              <button
-                                onClick={() => updateStatus(user.id, 'active')}
-                                className="text-xs font-medium text-success hover:opacity-75 transition-opacity py-1"
-                              >
-                                Reactivate
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => updateStatus(user.id, 'disabled')}
-                                  className="text-xs font-medium text-secondary hover:text-text transition-colors py-1"
-                                >
-                                  Disable
-                                </button>
-                                <span className="text-border text-xs" aria-hidden="true">|</span>
-                                <button
-                                  onClick={() => updateStatus(user.id, 'deactivated')}
-                                  className="text-xs font-medium text-error hover:opacity-75 transition-opacity py-1"
-                                >
-                                  Deactivate
-                                </button>
-                              </>
-                            )}
+                            <button
+                              onClick={() => updateStatus(user.id, 'disabled')}
+                              className="text-xs font-medium text-secondary hover:text-text transition-colors py-1"
+                            >
+                              Disable
+                            </button>
+                            <span className="text-border text-xs" aria-hidden="true">|</span>
+                            <button
+                              onClick={() => updateStatus(user.id, 'deactivated')}
+                              className="text-xs font-medium text-error hover:opacity-75 transition-opacity py-1"
+                            >
+                              Deactivate
+                            </button>
                           </>
                         )}
                       </div>
                     </div>
 
-                    {/* Notes panel (expanded) */}
                     {expandedUser === user.id && (
                       <NotesPanel userId={user.id} onUnauthorized={handleUnauthorized} />
                     )}
@@ -407,7 +720,6 @@ export default function AdminDashboard() {
           <section aria-label="Activity logs">
             <h1 className="font-heading text-2xl text-text mb-6">Activity Logs</h1>
 
-            {/* Filters */}
             <form
               onSubmit={handleApplyFilters}
               className="flex flex-wrap gap-4 mb-6 items-end p-4 bg-surface border border-border rounded"
@@ -474,8 +786,6 @@ export default function AdminDashboard() {
 
             {!logsLoading && !logsError && (
               <div className="border border-border rounded overflow-hidden">
-
-                {/* Header */}
                 <div className="grid grid-cols-[160px_minmax(0,1.5fr)_160px_minmax(0,1fr)] gap-4 px-5 py-2.5 bg-surface border-b border-border">
                   <span className="text-xs text-muted uppercase tracking-widest">Timestamp</span>
                   <span className="text-xs text-muted uppercase tracking-widest">User</span>
@@ -525,6 +835,11 @@ export default function AdminDashboard() {
               </div>
             )}
           </section>
+        )}
+
+        {/* ── Metrics tab ───────────────────────────────────────────────────── */}
+        {activeTab === 'metrics' && (
+          <MetricsTab onUnauthorized={handleUnauthorized} />
         )}
 
       </main>

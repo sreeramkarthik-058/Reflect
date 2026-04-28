@@ -60,6 +60,36 @@
 
 ---
 
+## 2026-04-26 — Token usage stored as combined integer on entries row
+
+**Decision:** `tokens_used` on the `entries` table stores `input_tokens + output_tokens` as a single integer. Cost is computed at display time using split-assumption constants, not stored.
+
+**Reason:** Storing raw combined tokens keeps the schema simple and lets us change cost-model assumptions (pricing, input/output ratio) retroactively without a data migration. Current assumption: 75% input ($0.80/M), 25% output ($4.00/M), yielding a blended ~$1.60/M rate.
+
+**Alternatives considered:** Storing input and output separately — more precise for future repricing, but adds two columns and more complexity for minimal current benefit given the fixed split assumption.
+
+---
+
+## 2026-04-26 — Burn rate projected from month-to-date average
+
+**Decision:** Projected monthly cost = `(monthTokens / dayOfMonth) * daysInMonth`. This linear extrapolation is computed on each `/api/admin/ai-costs` request.
+
+**Reason:** Simple and sufficient for early-stage monitoring. No historical baseline needed — the projection self-corrects as more days of the month accrue.
+
+**Alternatives considered:** Using a trailing 7-day average — more stable but under-represents early-month spikes; rejected as premature optimisation.
+
+---
+
+## 2026-04-26 — Metrics route uses Promise.all for parallel Supabase fetches
+
+**Decision:** `GET /api/admin/metrics` fetches users (`auth.admin.listUsers`) and entries in parallel via `Promise.all`, then derives all metrics in-process (DAU, entries/day, streak distribution, retention cohorts).
+
+**Reason:** Both fetches are independent; parallelising them halves the round-trip time. All derived metrics (streak, retention, day buckets) are computed from the same two result sets, so no additional DB queries are needed.
+
+**Alternatives considered:** Separate DB views or aggregate tables — premature; in-process computation is fast enough at current scale.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.

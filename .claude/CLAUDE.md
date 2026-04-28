@@ -69,7 +69,11 @@ All fonts loaded from Google Fonts.
 - Backend: `server/routes/admin.js` mounted at `/api/admin`; two Supabase clients (service role for DB, publishable for sign-in)
 - DB: `status` column added to `user_roles` (active / disabled / deactivated)
 
-### Phase 4 — Product Metrics `PENDING` (F36, F38)
+### Phase 4 — Product Metrics `COMPLETE` (F36, F38)
+- `tokens_used` column on `entries` (input + output tokens as integer); cost computed at display time
+- `GET /api/admin/metrics`: parallel fetch of users + entries, derives total_users, DAU, entries/day (7d), voice/text split, streak distribution, retention cohorts (this week / last week / last month)
+- `GET /api/admin/ai-costs`: last 30 days tokens grouped by day, today/week/month/projected totals using 75/25 input/output split at Haiku pricing ($0.80/$4.00 per M)
+- Admin dashboard: Metrics tab with `MetricCard` components, horizontal bar charts, streak 2×2 grid, retention cohort table, per-day cost table with usage bars
 
 ### Phase 5 — Full Today Screen `PENDING` (F06, F07, F08, F20–F24)
 

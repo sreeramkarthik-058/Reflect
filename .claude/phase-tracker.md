@@ -9,8 +9,8 @@ F11 AI response to entry · F12 Reflect personality prompt · F13 Response displ
 ## Phase 3 — Admin Portal `COMPLETE`
 F29 Admin login · F30 Role check via user_roles · F31 User list (entry count, last active) · F32 Disable user · F33 Deactivate user · F34 Reactivate user · F35 Admin notes · F37 Activity logs (filterable)
 
-## Phase 4 — Product Metrics `PENDING`
-F36 · F38
+## Phase 4 — Product Metrics `COMPLETE`
+F36 Product metrics dashboard (total users, DAU, entries/day, voice/text split, streak distribution, retention cohorts) · F38 AI cost tracker (tokens/day, daily/weekly/monthly cost, burn rate)
 
 ## Phase 5 — Full Today Screen `PENDING`
 F06 · F07 · F08 · F20 · F21 · F22 · F23 · F24

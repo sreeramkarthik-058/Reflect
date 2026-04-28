@@ -21,17 +21,11 @@ const SYSTEM_PROMPT =
 
 router.post('/', async (req, res) => {
   const { content, user_id } = req.body
-  console.log('[Reflect] POST /api/entries — body:', { content: content?.slice(0, 40), user_id })
-  console.log('[Reflect] SUPABASE_URL:', process.env.SUPABASE_URL)
-  console.log('[Reflect] SERVICE_ROLE_KEY present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
-  console.log('[Reflect] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY)
 
   if (!content?.trim() || !user_id) {
-    console.log('[Reflect] 400 — missing content or user_id')
     return res.status(400).json({ error: 'content and user_id are required' })
   }
 
-  console.log('[Reflect] → attempting Supabase insert')
   const { data: entry, error: insertError } = await supabase
     .from('entries')
     .insert({ user_id, content: content.trim(), input_type: 'text' })
@@ -39,13 +33,12 @@ router.post('/', async (req, res) => {
     .single()
 
   if (insertError) {
-    console.error('[Reflect] ✗ insert error:', JSON.stringify(insertError, null, 2))
+    console.error('[Reflect] insert error:', JSON.stringify(insertError, null, 2))
     return res.status(500).json({ error: 'Failed to save entry.' })
   }
-  console.log('[Reflect] ✓ insert ok — entry id:', entry.id)
 
   let aiResponse = null
-  console.log('[Reflect] → calling Claude, model:', models.journal)
+  let tokensUsed = null
   try {
     const message = await anthropic.messages.create({
       model: models.journal,
@@ -54,23 +47,22 @@ router.post('/', async (req, res) => {
       messages: [{ role: 'user', content: content.trim() }],
     })
     aiResponse = message.content[0].text
-    console.log('[Reflect] ✓ Claude response received, length:', aiResponse.length)
+    tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
   } catch (err) {
-    console.error('[Reflect] ✗ Claude error:', err.message, err.status ?? '')
+    console.error('[Reflect] Claude error:', err.message, err.status ?? '')
   }
 
   if (aiResponse) {
-    console.log('[Reflect] → updating entry with ai_response')
     const { error: updateError } = await supabase
       .from('entries')
-      .update({ ai_response: aiResponse })
+      .update({ ai_response: aiResponse, tokens_used: tokensUsed })
       .eq('id', entry.id)
 
     if (updateError) {
-      console.error('[Reflect] ✗ update error:', JSON.stringify(updateError, null, 2))
+      console.error('[Reflect] update error:', JSON.stringify(updateError, null, 2))
     } else {
-      console.log('[Reflect] ✓ ai_response saved')
       entry.ai_response = aiResponse
+      entry.tokens_used = tokensUsed
     }
   }
 
