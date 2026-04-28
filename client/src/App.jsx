@@ -6,6 +6,8 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Today from './pages/Today'
 import History from './pages/History'
+import AdminLogin from './pages/admin/AdminLogin'
+import AdminDashboard from './pages/admin/AdminDashboard'
 
 function ProtectedRoute({ session, loading, children }) {
   if (loading) return <div className="min-h-screen bg-bg" aria-hidden="true" />
@@ -54,6 +56,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   )

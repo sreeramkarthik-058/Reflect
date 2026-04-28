@@ -3,6 +3,7 @@ const express = require('express')
 const cors = require('cors')
 
 const entriesRouter = require('./routes/entries')
+const adminRouter = require('./routes/admin')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -15,6 +16,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/entries', entriesRouter)
+app.use('/api/admin', adminRouter)
 
 app.listen(PORT, () => {
   console.log(`Reflect server running on port ${PORT}`)

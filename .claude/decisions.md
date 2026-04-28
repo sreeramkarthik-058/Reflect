@@ -40,7 +40,27 @@
 
 ---
 
-## 2026-04-26 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
+## 2026-04-28 — Admin portal uses sessionStorage token, not Supabase auth state
+
+**Decision:** Admin login POSTs credentials to `POST /api/admin/login` (backend). Backend validates with Supabase, checks `user_roles` for `role = 'admin'`, and returns the Supabase `access_token`. Frontend stores it in `sessionStorage` as `adminToken` and sends it as `Authorization: Bearer` on every subsequent admin API call.
+
+**Reason:** The admin portal is intentionally decoupled from the user-facing Supabase auth state in the React app. Using sessionStorage (not localStorage) means the admin session clears when the browser tab closes. The admin JWT is still a valid Supabase JWT — the backend verifies it with `supabase.auth.getUser(token)` on every protected route.
+
+**Alternatives considered:** Reusing the user-facing Supabase session and checking the role client-side — rejected because it would expose role-checking logic on the frontend and allow a regular user to reach the dashboard UI before the check completes.
+
+---
+
+## 2026-04-28 — Two Supabase clients in admin.js: service role + publishable
+
+**Decision:** `server/routes/admin.js` creates two clients: `supabaseAdmin` (service role key, for DB queries and `auth.admin.*`) and `supabaseAuth` (publishable key, for `signInWithPassword` only).
+
+**Reason:** `signInWithPassword` is a user-facing auth operation that expects the publishable key. The service role key is for privileged database and admin-API operations. Mixing them causes unexpected behaviour on the auth endpoint.
+
+**Alternatives considered:** Single service role client for everything — rejected because `signInWithPassword` with a service role key does not behave as expected.
+
+---
+
+## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.
 

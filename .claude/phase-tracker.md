@@ -6,8 +6,8 @@ F01 Signup · F02 Login · F03 Logout · F04 Session persistence · F05 Text ent
 ## Phase 2 — AI Responses `COMPLETE`
 First-pass Claude integration. Haiku responds to journal entries with the defined personality.
 
-## Phase 3 — Mood & Tagging `IN PROGRESS`
-Mood tags, tag-based filtering, mood trend visualisation.
+## Phase 3 — Admin Portal `COMPLETE`
+F29 Admin login · F30 Role check via user_roles · F31 User list (entry count, last active) · F32 Disable user · F33 Deactivate user · F34 Reactivate user · F35 Admin notes · F37 Activity logs (filterable)
 
 ## Phase 4 — Voice Input `PENDING`
 Voice-to-text entry, input type differentiation (voice vs. text), playback.
