@@ -4,6 +4,20 @@ import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
 
+function renderMarkdown(text) {
+  const result = []
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g
+  let last = 0, m, k = 0
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) result.push(text.slice(last, m.index))
+    if (m[0].startsWith('**')) result.push(<strong key={k++}>{m[1]}</strong>)
+    else result.push(<em key={k++}>{m[2]}</em>)
+    last = regex.lastIndex
+  }
+  if (last < text.length) result.push(text.slice(last))
+  return result
+}
+
 const PROMPTS = [
   "What's actually on your mind right now?",
   "Something happened today. What was it?",
@@ -322,7 +336,7 @@ export default function Today() {
                 aria-label="Response from Reflect"
               >
                 <p className="text-secondary text-sm leading-relaxed whitespace-pre-wrap">
-                  {aiResponse}
+                  {renderMarkdown(aiResponse)}
                 </p>
               </div>
             )}
