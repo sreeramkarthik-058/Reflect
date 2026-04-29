@@ -1,5 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
 
+function renderMarkdown(text) {
+  const result = []
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g
+  let last = 0, m, k = 0
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) result.push(text.slice(last, m.index))
+    if (m[0].startsWith('**')) result.push(<strong key={k++}>{m[1]}</strong>)
+    else result.push(<em key={k++}>{m[2]}</em>)
+    last = regex.lastIndex
+  }
+  if (last < text.length) result.push(text.slice(last))
+  return result
+}
+
 export default function ChatUI({ messages, onSend, loading, onClear }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
@@ -55,7 +69,7 @@ export default function ChatUI({ messages, onSend, loading, onClear }) {
                   : 'bg-elevated border border-border text-secondary'
               }`}
             >
-              {msg.content}
+              {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
             </div>
           </div>
         ))}
