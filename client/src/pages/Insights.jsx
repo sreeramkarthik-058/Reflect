@@ -21,27 +21,54 @@ function inlineMarkdown(text) {
   return result
 }
 
-function DigestMarkdown({ text }) {
-  const blocks = text.split(/\n\n+/).filter(b => b.trim())
+function parseDigest(text) {
+  const get = (label) => {
+    const re = new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n[A-Z]+:|$)`)
+    return (re.exec(text)?.[1] ?? '').trim()
+  }
+  const opening  = get('OPENING')
+  const concept  = get('CONCEPT')
+  const question = get('QUESTION')
+  const patternsRaw = get('PATTERNS')
+  const patterns = patternsRaw
+    .split('\n')
+    .map(l => l.replace(/^-\s*/, '').trim())
+    .filter(Boolean)
+  return { opening, patterns, concept, question }
+}
+
+function DigestView({ text }) {
+  const { opening, patterns, concept, question } = parseDigest(text)
+  // Fallback: if parsing yields nothing, render raw text
+  if (!opening && !patterns.length && !concept && !question) {
+    return <p className="text-secondary text-sm leading-relaxed">{text}</p>
+  }
+
+  // Split CONCEPT into "name — explanation"
+  const conceptParts = concept.split(/\s*—\s*(.+)/)
+  const conceptName  = conceptParts[0]?.trim()
+  const conceptDesc  = conceptParts[1]?.trim()
+
   return (
     <div className="text-secondary text-sm leading-relaxed space-y-3">
-      {blocks.map((block, i) => {
-        const lines = block.split('\n').filter(l => l.trim())
-        const isList = lines.every(l => /^-\s/.test(l.trim()))
-        if (isList) {
-          return (
-            <ul key={i} className="space-y-1.5 pl-1">
-              {lines.map((line, j) => (
-                <li key={j} className="flex gap-2">
-                  <span className="text-gold mt-0.5 shrink-0" aria-hidden="true">–</span>
-                  <span>{inlineMarkdown(line.replace(/^-\s*/, ''))}</span>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-        return <p key={i}>{inlineMarkdown(block)}</p>
-      })}
+      {opening  && <p>{inlineMarkdown(opening)}</p>}
+      {patterns.length > 0 && (
+        <ul className="space-y-1.5">
+          {patterns.map((p, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="text-gold shrink-0 mt-0.5" aria-hidden="true">–</span>
+              <span>{inlineMarkdown(p)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {concept && (
+        <p>
+          {conceptName && <em className="not-italic font-medium text-text">{conceptName}</em>}
+          {conceptDesc && <span> — {inlineMarkdown(conceptDesc)}</span>}
+        </p>
+      )}
+      {question && <p className="text-text">{inlineMarkdown(question)}</p>}
     </div>
   )
 }
@@ -266,7 +293,7 @@ export default function Insights() {
           {digestError && <p className="text-error text-sm" role="alert">{digestError}</p>}
           {!digestLoading && digest !== null && (
             digest.digest
-              ? <DigestMarkdown text={digest.digest} />
+              ? <DigestView text={digest.digest} />
               : (
                 <p className="text-muted text-sm italic">
                   Write at least 3 entries this week to get a digest.

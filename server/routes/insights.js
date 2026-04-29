@@ -121,7 +121,13 @@ router.post('/digest', requireUser, async (req, res) => {
       system:     DIGEST_SYSTEM_PROMPT,
       messages: [{
         role:    'user',
-        content: `Here are my journal entries from this week:\n\n${entryText}`,
+        content:
+          `Analyze these journal entries and respond in EXACTLY this format with no deviation:\n\n` +
+          `OPENING: [One sentence observation about the week]\n\n` +
+          `PATTERNS:\n- [Pattern 1]\n- [Pattern 2]\n- [Pattern 3]\n\n` +
+          `CONCEPT: [Psychology concept name] — [one sentence plain English explanation]\n\n` +
+          `QUESTION: [One closing question]\n\n` +
+          `Journal entries:\n${entryText}`,
       }],
     })
     res.json({ digest: message.content[0].text, entry_count: entries.length })
