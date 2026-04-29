@@ -19,7 +19,7 @@ AI-powered journaling app targeting the 18–45 Indian demographic. Designed to 
 | Border | `#2A2520` |
 | Text | `#F5F0E8` |
 | Secondary Text | `#A09A8E` |
-| Muted | `#5C5650` |
+| Muted | `#8C8680` |
 | Accent Gold | `#D4A96A` |
 | Success | `#6BAE8A` |
 | Error | `#C96A6A` |

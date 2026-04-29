@@ -11,7 +11,7 @@ export default function BottomNav() {
         aria-label="Today"
         className={({ isActive }) =>
           `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors ${
-            isActive ? 'text-gold' : 'text-secondary'
+            isActive ? 'text-gold' : 'text-secondary hover:text-text'
           }`
         }
       >
@@ -27,7 +27,7 @@ export default function BottomNav() {
         aria-label="History"
         className={({ isActive }) =>
           `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors ${
-            isActive ? 'text-gold' : 'text-secondary'
+            isActive ? 'text-gold' : 'text-secondary hover:text-text'
           }`
         }
       >
@@ -43,7 +43,7 @@ export default function BottomNav() {
         aria-label="Insights"
         className={({ isActive }) =>
           `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors ${
-            isActive ? 'text-gold' : 'text-secondary'
+            isActive ? 'text-gold' : 'text-secondary hover:text-text'
           }`
         }
       >

@@ -8,7 +8,7 @@
   --color-border:    #2A2520;
   --color-text:      #F5F0E8;
   --color-secondary: #A09A8E;
-  --color-muted:     #5C5650;
+  --color-muted:     #8C8680;
   --color-gold:      #D4A96A;
   --color-success:   #6BAE8A;
   --color-error:     #C96A6A;
@@ -36,6 +36,13 @@ body {
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pointer cursor on all interactive elements */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"] {
+  cursor: pointer;
 }
 
 /* Global focus style — gold outline, WCAG AA */
