@@ -282,6 +282,14 @@ export default function Today() {
             <h1 className="font-heading text-3xl text-text mb-1">{firstName}</h1>
           )}
           <p className="text-secondary text-sm leading-relaxed">{greetingBody}</p>
+          {writtenToday && (
+            <Link
+              to="/insights"
+              className="inline-block mt-2 text-sm text-gold hover:opacity-75 transition-opacity"
+            >
+              → See what your entries say about you
+            </Link>
+          )}
         </div>
 
         {savedEntry ? (
