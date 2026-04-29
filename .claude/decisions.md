@@ -122,6 +122,46 @@
 
 ---
 
+## 2026-04-29 — Shared Navbar.jsx extracted; per-page nav removed
+
+**Decision:** A single `Navbar.jsx` component handles the sticky top navigation on all app pages (Today, History, Insights, Ask). It owns the logout handler, admin-link visibility check (queries `user_roles` on mount), and active-link highlighting via React Router `NavLink`. All per-page nav implementations were removed.
+
+**Reason:** Consistency — every page was getting its own logout button wired separately, and Insights initially launched without one. Extracting to one component means nav changes happen in one place and admin visibility logic runs once.
+
+**Alternatives considered:** Global layout wrapper with nested routes — would require restructuring `App.jsx` significantly; per-import is simpler and consistent with the existing pattern.
+
+---
+
+## 2026-04-29 — Mood auto-detection via parallel Claude call; Promise.allSettled
+
+**Decision:** When a user saves an entry without choosing a mood manually, `POST /api/entries` fires a second Claude call in parallel (alongside the journal response call) to classify mood as one of the five valid values. Both calls run via `Promise.allSettled` so a mood detection failure never loses the journal response.
+
+**Reason:** Auto-detecting mood improves data quality for the Insights mood graph without requiring user action every time. Using `Promise.allSettled` instead of `Promise.all` ensures the primary journal response is always returned even if the mood call fails or times out.
+
+**Alternatives considered:** Sequential calls — slower; client-side detection — would expose the API key.
+
+---
+
+## 2026-04-29 — Markdown rendered via regex parser, no external library
+
+**Decision:** Bold and italic markdown (`**bold**`, `*italic*`) in AI responses is parsed with a single `renderMarkdown()` function using a regex loop. It returns a React node array with `<strong>` and `<em>` elements. The same function is copy-pasted into `Today.jsx`, `Insights.jsx`, and `ChatUI.jsx`.
+
+**Reason:** Claude's responses only use basic inline formatting — no headings, lists, or code blocks. A full markdown library (e.g. `react-markdown`) would add ~50 KB to the bundle for functionality that isn't needed. The regex handles all cases Claude actually produces.
+
+**Alternatives considered:** `react-markdown` or `marked` — rejected as disproportionate to the requirement; `dangerouslySetInnerHTML` with sanitisation — more complex and a potential XSS surface.
+
+---
+
+## 2026-04-29 — WCAG AA muted color: #5C5650 → #8C8680
+
+**Decision:** The `--color-muted` token was changed from `#5C5650` to `#8C8680`. The original value failed WCAG AA (4.5:1) against all three background levels. The new value gives ratios of 5.4:1 (bg), 4.8:1 (surface), 4.6:1 (elevated) — all pass.
+
+**Reason:** Muted text is used for secondary labels, timestamps, and placeholder text throughout the app. Failing contrast on a design token that touches 60+ instances would mean silent WCAG failures everywhere.
+
+**Alternatives considered:** Using `text-secondary` (#A09A8E) everywhere instead of `text-muted` — rejected; the two-level hierarchy (secondary vs. muted) is intentional for visual weight.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.
