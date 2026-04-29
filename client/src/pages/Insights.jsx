@@ -171,6 +171,28 @@ export default function Insights() {
 
       <Navbar />
 
+      {/* Sticky CTA — always visible below nav */}
+      <div className="sticky top-14 z-20 bg-surface border-b border-border w-full">
+        <Link
+          to="/ask"
+          className="sm:hidden flex items-center justify-center gap-2.5 px-6 py-3 hover:bg-elevated transition-colors"
+          aria-label="Ask My Journal"
+        >
+          <span className="text-gold text-xs leading-none">✦</span>
+          <span className="text-sm text-secondary">Understand yourself a little better</span>
+          <span className="text-gold text-sm">→</span>
+        </Link>
+        <button
+          onClick={() => setChatOpen(true)}
+          className="hidden sm:flex w-full items-center justify-center gap-2.5 px-6 py-3 hover:bg-elevated transition-colors"
+          aria-label="Open Ask My Journal"
+        >
+          <span className="text-gold text-xs leading-none">✦</span>
+          <span className="text-sm text-secondary">Understand yourself a little better</span>
+          <span className="text-gold text-sm">→</span>
+        </button>
+      </div>
+
       {/* Main */}
       <main className="flex-1 w-full max-w-[680px] mx-auto px-6 py-10 pb-24 sm:pb-10">
 
@@ -229,21 +251,6 @@ export default function Insights() {
           )}
         </div>
 
-        {/* Ask My Journal — F28 */}
-        <div className="mt-2">
-          <Link
-            to="/ask"
-            className="sm:hidden text-sm text-secondary hover:text-gold transition-colors"
-          >
-            Ask your journal anything →
-          </Link>
-          <button
-            onClick={() => setChatOpen(true)}
-            className="hidden sm:inline text-sm text-secondary hover:text-gold transition-colors"
-          >
-            Ask your journal anything →
-          </button>
-        </div>
 
       </main>
 

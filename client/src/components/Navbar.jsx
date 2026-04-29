@@ -27,7 +27,7 @@ export default function Navbar() {
     `text-sm transition-colors py-2 px-3 ${isActive ? 'text-gold font-medium' : 'text-secondary hover:text-text'}`
 
   return (
-    <nav className="border-b border-border px-6 h-14 flex items-center justify-between shrink-0">
+    <nav className="sticky top-0 z-30 bg-bg border-b border-border px-6 h-14 flex items-center justify-between shrink-0">
       <span className="font-heading text-2xl text-text leading-none">Reflect</span>
       <div className="flex items-center gap-1">
         {/* Desktop nav links — hidden on mobile, handled by BottomNav */}
