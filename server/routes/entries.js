@@ -19,6 +19,8 @@ const SYSTEM_PROMPT =
   'Never start two responses the same way. ' +
   'If the entry signals genuine distress, drop the humour and respond with warmth only.'
 
+const VALID_MOODS = new Set(['Happy', 'Grateful', 'Neutral', 'Stressed', 'Anxious'])
+
 router.post('/', async (req, res) => {
   const { content, user_id, mood, input_type } = req.body
 
@@ -42,32 +44,61 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: 'Failed to save entry.' })
   }
 
-  let aiResponse = null
-  let tokensUsed = null
-  try {
-    const message = await anthropic.messages.create({
-      model: models.journal,
+  let aiResponse   = null
+  let tokensUsed   = null
+  let detectedMood = mood || null
+
+  const [journalResult, moodResult] = await Promise.allSettled([
+    anthropic.messages.create({
+      model:      models.journal,
       max_tokens: 300,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: content.trim() }],
-    })
-    aiResponse = message.content[0].text
-    tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
-  } catch (err) {
-    console.error('[Reflect] Claude error:', err.message, err.status ?? '')
+      system:     SYSTEM_PROMPT,
+      messages:   [{ role: 'user', content: content.trim() }],
+    }),
+    // Only auto-detect mood when the user didn't pick one manually
+    mood ? Promise.resolve(null) : anthropic.messages.create({
+      model:      models.journal,
+      max_tokens: 5,
+      messages:   [{
+        role:    'user',
+        content: `Classify the mood of this journal entry as exactly one word from: Happy, Grateful, Neutral, Stressed, Anxious. Reply with the single word only.\n\n${content.trim()}`,
+      }],
+    }),
+  ])
+
+  if (journalResult.status === 'fulfilled') {
+    const msg = journalResult.value
+    aiResponse = msg.content[0].text
+    tokensUsed = (msg.usage?.input_tokens ?? 0) + (msg.usage?.output_tokens ?? 0)
+  } else {
+    console.error('[Reflect] Claude error:', journalResult.reason?.message ?? journalResult.reason)
   }
 
-  if (aiResponse) {
+  if (moodResult.status === 'fulfilled' && moodResult.value) {
+    const raw = moodResult.value.content[0].text.trim()
+    if (VALID_MOODS.has(raw)) detectedMood = raw
+    tokensUsed = (tokensUsed ?? 0) +
+      (moodResult.value.usage?.input_tokens ?? 0) +
+      (moodResult.value.usage?.output_tokens ?? 0)
+  } else if (moodResult.status === 'rejected') {
+    console.error('[Reflect] mood detection error:', moodResult.reason?.message ?? moodResult.reason)
+  }
+
+  if (aiResponse || (detectedMood && !mood)) {
+    const updateData = {}
+    if (aiResponse)              { updateData.ai_response = aiResponse; updateData.tokens_used = tokensUsed }
+    if (detectedMood && !mood)     updateData.mood = detectedMood
+
     const { error: updateError } = await supabase
       .from('entries')
-      .update({ ai_response: aiResponse, tokens_used: tokensUsed })
+      .update(updateData)
       .eq('id', entry.id)
 
     if (updateError) {
       console.error('[Reflect] update error:', JSON.stringify(updateError, null, 2))
     } else {
-      entry.ai_response = aiResponse
-      entry.tokens_used = tokensUsed
+      if (updateData.ai_response) { entry.ai_response = aiResponse; entry.tokens_used = tokensUsed }
+      if (updateData.mood)          entry.mood = detectedMood
     }
   }
 
