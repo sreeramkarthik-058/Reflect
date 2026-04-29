@@ -7,7 +7,7 @@ import ChatUI from '../components/ChatUI'
 
 const MOOD_LABEL = { 5: 'Happy', 4: 'Grateful', 3: 'Neutral', 2: 'Stressed', 1: 'Anxious' }
 
-function renderMarkdown(text) {
+function inlineMarkdown(text) {
   const result = []
   const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g
   let last = 0, m, k = 0
@@ -19,6 +19,31 @@ function renderMarkdown(text) {
   }
   if (last < text.length) result.push(text.slice(last))
   return result
+}
+
+function DigestMarkdown({ text }) {
+  const blocks = text.split(/\n\n+/).filter(b => b.trim())
+  return (
+    <div className="text-secondary text-sm leading-relaxed space-y-3">
+      {blocks.map((block, i) => {
+        const lines = block.split('\n').filter(l => l.trim())
+        const isList = lines.every(l => /^-\s/.test(l.trim()))
+        if (isList) {
+          return (
+            <ul key={i} className="space-y-1.5 pl-1">
+              {lines.map((line, j) => (
+                <li key={j} className="flex gap-2">
+                  <span className="text-gold mt-0.5 shrink-0" aria-hidden="true">–</span>
+                  <span>{inlineMarkdown(line.replace(/^-\s*/, ''))}</span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+        return <p key={i}>{inlineMarkdown(block)}</p>
+      })}
+    </div>
+  )
 }
 
 async function insightsFetch(path, options = {}) {
@@ -241,7 +266,7 @@ export default function Insights() {
           {digestError && <p className="text-error text-sm" role="alert">{digestError}</p>}
           {!digestLoading && digest !== null && (
             digest.digest
-              ? <p className="text-secondary text-sm leading-relaxed whitespace-pre-wrap">{renderMarkdown(digest.digest)}</p>
+              ? <DigestMarkdown text={digest.digest} />
               : (
                 <p className="text-muted text-sm italic">
                   Write at least 3 entries this week to get a digest.
