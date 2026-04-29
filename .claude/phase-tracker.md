@@ -15,8 +15,8 @@ F36 Product metrics dashboard (total users, DAU, entries/day, voice/text split, 
 ## Phase 5 — Full Today Screen `COMPLETE`
 F06 Voice entry (Web Speech API, Chrome/Edge) · F07 Image upload placeholder (Coming soon tooltip) · F08 Mood tag (5 pills, saved to entries.mood, emoji in history) · F20 Context-aware greeting · F21 Rotating prompt (6 variants, 4.8s cycle) · F22 Stats strip with streak, total, recent mood · F23 Done state loads today's entry on mount · F24 Visible textarea border
 
-## Phase 6 — Insights `PENDING`
-F25 · F26 · F27 · F28
+## Phase 6 — Insights `COMPLETE`
+F25 Streak + total entries cards · F26 SVG mood line graph (30 days, trend indicator) · F27 Weekly AI digest (Claude, ≥3 entries threshold) · F28 Ask My Journal chat (desktop slide-in drawer + mobile /ask full-screen page) · Mobile bottom tab bar (Today / History / Insights) · Desktop top nav updated across all three pages
 
 ## Phase 7 — Telegram Bot `PENDING`
 N01 · N02 · N03 · N04 · N05 · N06

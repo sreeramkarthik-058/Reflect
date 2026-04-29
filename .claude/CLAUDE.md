@@ -83,7 +83,17 @@ All fonts loaded from Google Fonts.
 - Stats strip: streak · total entries · most recent mood emoji (when available)
 - `entries.js` backend: accepts `mood` and `input_type` from request body, stores both on insert
 
-### Phase 6 — Insights `PENDING` (F25–F28)
+### Phase 6 — Insights `COMPLETE` (F25–F28)
+- Backend: `server/routes/insights.js` mounted at `/api/insights`; `requireUser` middleware via Bearer JWT
+- `GET /api/insights/stats` — streak + `mood_series` (one point per day, last 30 days)
+- `POST /api/insights/digest` — weekly AI digest; returns `null` if fewer than 3 entries this week
+- `POST /api/insights/chat` — Q&A over last 50 entries passed as system context
+- `client/src/pages/Insights.jsx` — streak/total cards, SVG mood graph with trend indicator, digest card, Ask My Journal entry point
+- `client/src/pages/Ask.jsx` — mobile full-screen chat page
+- `client/src/components/BottomNav.jsx` — mobile-only fixed bottom tab bar (Today / History / Insights); hidden on `sm:` and above
+- `client/src/components/ChatUI.jsx` — shared chat bubble UI used by Insights drawer and Ask.jsx
+- Desktop nav: Today / History / Insights links in top nav across all three pages; hidden on mobile with `hidden sm:flex`
+- Mobile: nav links hidden in header; `pb-24 sm:pb-10` on main to clear bottom tab bar
 
 ### Phase 7 — Telegram Bot `PENDING` (N01–N06)
 

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Navbar from '../components/Navbar'
+import BottomNav from '../components/BottomNav'
 
 const PROMPTS = [
   "What's actually on your mind right now?",
@@ -49,8 +51,7 @@ function moodEmoji(label) {
 
 export default function Today() {
   const navigate = useNavigate()
-  const [user, setUser]       = useState(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [user, setUser] = useState(null)
 
   // Form
   const [content, setContent]     = useState('')
@@ -87,28 +88,17 @@ export default function Today() {
       setUser(user)
       if (!user) return
 
-      const [statsRes, roleRes] = await Promise.all([
-        supabase
-          .from('entries')
-          .select('created_at, mood')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single(),
-      ])
+      const { data: entries } = await supabase
+        .from('entries')
+        .select('created_at, mood')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-      // Stats
-      const allEntries = statsRes.data || []
+      const allEntries = entries || []
       const todayMs    = dayKey(new Date())
       setWrittenToday(allEntries.some(e => dayKey(e.created_at) === todayMs))
       const recentMood = allEntries.find(e => e.mood)?.mood || null
       setStats({ streak: calcStreak(allEntries), total: allEntries.length, recentMood })
-
-      // Role
-      if (roleRes.data?.role === 'admin') setIsAdmin(true)
     }
     init()
   }, [])
@@ -270,11 +260,6 @@ export default function Today() {
     setInputType('text')
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    navigate('/login')
-  }
-
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0]
@@ -286,37 +271,10 @@ export default function Today() {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
 
-      {/* Nav */}
-      <nav className="border-b border-border px-6 h-14 flex items-center justify-between shrink-0">
-        <span className="font-heading text-2xl text-text leading-none" aria-label="Reflect">
-          Reflect
-        </span>
-        <div className="flex items-center gap-1">
-          <Link
-            to="/history"
-            className="text-sm text-secondary hover:text-text transition-colors py-2 px-3"
-          >
-            History
-          </Link>
-          {isAdmin && (
-            <Link
-              to="/admin/dashboard"
-              className="text-sm text-secondary hover:text-text transition-colors py-2 px-3"
-            >
-              Admin
-            </Link>
-          )}
-          <button
-            onClick={handleLogout}
-            className="text-sm text-secondary hover:text-text transition-colors py-2 px-3 -mr-3"
-          >
-            Log out
-          </button>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Main content */}
-      <main className="flex-1 w-full max-w-[680px] mx-auto px-6 py-10">
+      <main className="flex-1 w-full max-w-[680px] mx-auto px-6 py-10 pb-24 sm:pb-10">
 
         {/* Greeting — F20 */}
         <div className="mb-9">
@@ -511,6 +469,8 @@ export default function Today() {
         </div>
 
       </main>
+
+      <BottomNav />
     </div>
   )
 }

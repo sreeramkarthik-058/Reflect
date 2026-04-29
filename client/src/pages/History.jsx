@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Navbar from '../components/Navbar'
+import BottomNav from '../components/BottomNav'
 
 const MOOD_EMOJI = {
   Happy:    '😊',
@@ -38,7 +40,9 @@ function EntryPill({ entry, onSave, onDelete, searchQuery }) {
   const [draft, setDraft] = useState(entry.content)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const textareaRef = useRef(null)
+  const [listening, setListening] = useState(false)
+  const textareaRef    = useRef(null)
+  const recognitionRef = useRef(null)
 
   useEffect(() => {
     if (editing && textareaRef.current) {
@@ -58,7 +62,45 @@ function EntryPill({ entry, onSave, onDelete, searchQuery }) {
     el.style.height = `${el.scrollHeight}px`
   }, [draft, editing])
 
+  // Stop recording whenever editing ends or component unmounts
+  useEffect(() => {
+    if (!editing) { recognitionRef.current?.stop(); setListening(false) }
+  }, [editing])
+  useEffect(() => () => { recognitionRef.current?.stop() }, [])
+
+  function toggleVoice() {
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { alert('Voice input is only available on Chrome and Edge.'); return }
+
+    const recognition = new SR()
+    recognitionRef.current = recognition
+    recognition.continuous     = true
+    recognition.interimResults = false
+    recognition.lang           = 'en-IN'
+
+    recognition.onresult = event => {
+      const transcript = Array.from(event.results)
+        .slice(event.resultIndex)
+        .map(r => r[0].transcript)
+        .join(' ')
+        .trim()
+      if (transcript) setDraft(prev => prev ? `${prev} ${transcript}` : transcript)
+    }
+    recognition.onend   = () => setListening(false)
+    recognition.onerror = () => setListening(false)
+
+    recognition.start()
+    setListening(true)
+  }
+
   async function handleSave() {
+    recognitionRef.current?.stop()
+    setListening(false)
     if (!draft.trim() || draft.trim() === entry.content) {
       setEditing(false)
       setDraft(entry.content)
@@ -77,6 +119,8 @@ function EntryPill({ entry, onSave, onDelete, searchQuery }) {
   }
 
   function handleCancel() {
+    recognitionRef.current?.stop()
+    setListening(false)
     setDraft(entry.content)
     setEditing(false)
     setSaveError('')
@@ -126,6 +170,37 @@ function EntryPill({ entry, onSave, onDelete, searchQuery }) {
                 className="w-full bg-bg border border-border rounded px-3 py-2.5 text-base text-text leading-relaxed focus:border-gold focus:outline-none transition-colors resize-none"
                 aria-label="Edit entry"
               />
+
+              {/* Voice button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  aria-label={listening ? 'Stop recording' : 'Start voice entry'}
+                  className={`flex items-center gap-2 px-3 py-2 rounded text-sm border transition-colors ${
+                    listening
+                      ? 'bg-error border-error text-bg animate-pulse font-medium'
+                      : 'text-secondary border-border hover:text-text hover:border-muted'
+                  }`}
+                >
+                  {listening ? (
+                    <>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                        <rect width="10" height="10" rx="1"/>
+                      </svg>
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zm-1 17.93V22H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A8.001 8.001 0 0 0 20 12a1 1 0 1 0-2 0 6 6 0 0 1-12 0 1 1 0 1 0-2 0 8.001 8.001 0 0 0 7 7.93z"/>
+                      </svg>
+                      Voice
+                    </>
+                  )}
+                </button>
+              </div>
+
               {saveError && (
                 <p className="text-error text-sm" role="alert">{saveError}</p>
               )}
@@ -233,41 +308,16 @@ export default function History() {
     setEntries(prev => prev.filter(e => e.id !== id))
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    navigate('/login')
-  }
-
   const filtered = search.trim()
     ? entries.filter(e => e.content.toLowerCase().includes(search.toLowerCase()))
     : entries
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      {/* Nav */}
-      <nav className="border-b border-border px-6 h-14 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <span className="font-heading text-2xl text-text leading-none">
-            Reflect
-          </span>
-          <Link
-            to="/today"
-            className="text-sm text-secondary hover:text-text transition-colors py-2"
-            aria-label="Back to today"
-          >
-            ← Today
-          </Link>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-secondary hover:text-text transition-colors py-2 px-3 -mr-3"
-        >
-          Log out
-        </button>
-      </nav>
+      <Navbar />
 
       {/* Main */}
-      <main className="flex-1 w-full max-w-[680px] mx-auto px-6 py-10">
+      <main className="flex-1 w-full max-w-[680px] mx-auto px-6 py-10 pb-24 sm:pb-10">
 
         <div className="mb-8">
           <h1 className="font-heading text-3xl text-text mb-1">Your entries</h1>
@@ -323,6 +373,8 @@ export default function History() {
         </div>
 
       </main>
+
+      <BottomNav />
     </div>
   )
 }

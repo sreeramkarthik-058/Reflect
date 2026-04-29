@@ -90,6 +90,26 @@
 
 ---
 
+## 2026-04-29 — Mobile navigation: BottomNav component, not per-page duplication
+
+**Decision:** A single `BottomNav.jsx` component renders a fixed bottom tab bar on mobile (`sm:hidden`). Each page imports and renders it once. Desktop nav links are wrapped in `hidden sm:flex` so they are invisible on mobile. Main content gets `pb-24 sm:pb-10` to clear the bar.
+
+**Reason:** Centralising tab state in one component means the active-tab highlight is driven by `useLocation` (via React Router `NavLink`) — no prop passing or per-page logic needed. Each page keeps its own desktop nav for context-specific links (e.g. "← Today" in History).
+
+**Alternatives considered:** A global layout wrapper — would require restructuring all routes; BottomNav-per-page is simpler and matches the existing page-level component pattern.
+
+---
+
+## 2026-04-29 — Ask My Journal: desktop drawer vs. mobile route
+
+**Decision:** On desktop, "Ask My Journal" opens a 400px slide-in drawer on `Insights.jsx` (overlay + aside, z-50). On mobile, the same button is a `Link to="/ask"` that navigates to a full-screen `Ask.jsx` page.
+
+**Reason:** A drawer on mobile would obscure the entire viewport and compete with the bottom tab bar. A dedicated `/ask` route gives mobile users the full screen and a clear back-navigation path (`← Insights`). ChatUI is a shared component used by both surfaces.
+
+**Alternatives considered:** Always-route approach (no drawer) — simpler but loses the desktop inline-context UX where the user can see the Insights page behind the chat.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.

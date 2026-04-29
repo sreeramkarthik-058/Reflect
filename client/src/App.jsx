@@ -6,6 +6,8 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Today from './pages/Today'
 import History from './pages/History'
+import Insights from './pages/Insights'
+import Ask from './pages/Ask'
 import AdminLogin from './pages/admin/AdminLogin'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
@@ -53,6 +55,22 @@ export default function App() {
           element={
             <ProtectedRoute session={session} loading={loading}>
               <History />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/insights"
+          element={
+            <ProtectedRoute session={session} loading={loading}>
+              <Insights />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ask"
+          element={
+            <ProtectedRoute session={session} loading={loading}>
+              <Ask />
             </ProtectedRoute>
           }
         />
