@@ -3,6 +3,7 @@ const router = express.Router()
 const { createClient } = require('@supabase/supabase-js')
 const Anthropic = require('@anthropic-ai/sdk')
 const models = require('../../config/models')
+const { JOURNAL_SYSTEM_PROMPT } = require('../../config/prompts')
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,14 +11,6 @@ const supabase = createClient(
 )
 
 const anthropic = new Anthropic()
-
-const SYSTEM_PROMPT =
-  'You are Reflect, an AI journaling companion. You are witty, warm, and self-deprecating. ' +
-  'You never say "I hear you", "That must be hard", or "Thank you for sharing". ' +
-  'You sound like a smart friend who has read too much. ' +
-  'Keep responses to 3-5 lines. End with one gentle question. ' +
-  'Never start two responses the same way. ' +
-  'If the entry signals genuine distress, drop the humour and respond with warmth only.'
 
 const VALID_MOODS = new Set(['Happy', 'Grateful', 'Neutral', 'Stressed', 'Anxious'])
 
@@ -51,8 +44,8 @@ router.post('/', async (req, res) => {
   const [journalResult, moodResult] = await Promise.allSettled([
     anthropic.messages.create({
       model:      models.journal,
-      max_tokens: 300,
-      system:     SYSTEM_PROMPT,
+      max_tokens: 150,
+      system:     JOURNAL_SYSTEM_PROMPT,
       messages:   [{ role: 'user', content: content.trim() }],
     }),
     // Only auto-detect mood when the user didn't pick one manually

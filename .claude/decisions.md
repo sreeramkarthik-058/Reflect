@@ -110,6 +110,18 @@
 
 ---
 
+## 2026-04-29 — AI system prompts extracted to config/prompts.js; full personality overhaul
+
+**Decision:** All Claude system prompts moved from inline strings in route files to a dedicated `config/prompts.js` module, alongside the existing `config/models.js`. Three separate named exports: `JOURNAL_SYSTEM_PROMPT`, `DIGEST_SYSTEM_PROMPT`, `ASK_SYSTEM_PROMPT`.
+
+**Reason:** The Reflect AI persona was rebuilt from scratch — witty/warm psychologist with Indian urban context, psychological concept explanations, crisis guardrails (iCall + Vandrevala Foundation), and strict forbidden phrases. Separating prompts from routing logic means personality can be iterated without touching request/response plumbing. Each surface (entry response, weekly digest, Q&A chat) has meaningfully different tone and length requirements.
+
+**Token limits:** journal 150, digest 400, chat 250. Chat route also trimmed to last 30 entries (from 50), each truncated to 300 chars, reducing context size without sacrificing quality.
+
+**Alternatives considered:** Single unified prompt — rejected; the three surfaces have different jobs (acknowledge + question vs. weekly synthesis vs. conversational Q&A) and different output length needs.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.

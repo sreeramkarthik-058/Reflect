@@ -3,6 +3,7 @@ const router = express.Router()
 const { createClient } = require('@supabase/supabase-js')
 const Anthropic = require('@anthropic-ai/sdk')
 const models = require('../../config/models')
+const { DIGEST_SYSTEM_PROMPT, ASK_SYSTEM_PROMPT } = require('../../config/prompts')
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -117,12 +118,7 @@ router.post('/digest', requireUser, async (req, res) => {
     const message = await anthropic.messages.create({
       model:      models.journal,
       max_tokens: 400,
-      system:
-        'You are Reflect, an AI journaling companion. You are witty, warm, and self-deprecating. ' +
-        'You never say "I hear you", "That must be hard", or "Thank you for sharing". ' +
-        "Analyze this week's journal entries and write a digest: notice patterns, name what's been on their mind, " +
-        'and reflect something back they might not have seen. ' +
-        'Keep it to 4–6 lines. End with one question or observation. Be insightful, not generic.',
+      system:     DIGEST_SYSTEM_PROMPT,
       messages: [{
         role:    'user',
         content: `Here are my journal entries from this week:\n\n${entryText}`,
@@ -147,7 +143,7 @@ router.post('/chat', requireUser, async (req, res) => {
     .select('content, mood, created_at')
     .eq('user_id', req.user.id)
     .order('created_at', { ascending: false })
-    .limit(50)
+    .limit(30)
 
   if (error) {
     console.error('[Insights] chat fetch error:', error)
@@ -158,22 +154,18 @@ router.post('/chat', requireUser, async (req, res) => {
     .reverse()
     .map(e => {
       const d = new Date(e.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
-      return `[${d}${e.mood ? ', ' + e.mood : ''}] ${e.content}`
+      const content = e.content.slice(0, 300)
+      return `[${d}${e.mood ? ', ' + e.mood : ''}] ${content}`
     })
     .join('\n\n')
 
-  const systemPrompt =
-    'You are Reflect, an AI journaling companion with access to the user\'s journal entries. ' +
-    'You are witty, warm, and self-deprecating. ' +
-    'You never say "I hear you", "That must be hard", or "Thank you for sharing". ' +
-    'Answer questions about their journal thoughtfully. Reference specific entries when relevant. ' +
-    'Keep responses to 2–4 lines unless the question genuinely needs more.' +
+  const systemPrompt = ASK_SYSTEM_PROMPT +
     (journalContext ? `\n\nJournal entries (oldest to newest):\n\n${journalContext}` : '')
 
   try {
     const message = await anthropic.messages.create({
       model:      models.journal,
-      max_tokens: 400,
+      max_tokens: 250,
       system:     systemPrompt,
       messages:   messages.map(m => ({ role: m.role, content: m.content })),
     })
