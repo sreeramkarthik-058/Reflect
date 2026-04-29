@@ -87,22 +87,12 @@ export default function Today() {
       setUser(user)
       if (!user) return
 
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      const [statsRes, todayRes, roleRes] = await Promise.all([
+      const [statsRes, roleRes] = await Promise.all([
         supabase
           .from('entries')
           .select('created_at, mood')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
-        supabase
-          .from('entries')
-          .select('content, ai_response, mood')
-          .eq('user_id', user.id)
-          .gte('created_at', todayStart.toISOString())
-          .order('created_at', { ascending: false })
-          .limit(1),
         supabase
           .from('user_roles')
           .select('role')
@@ -116,14 +106,6 @@ export default function Today() {
       setWrittenToday(allEntries.some(e => dayKey(e.created_at) === todayMs))
       const recentMood = allEntries.find(e => e.mood)?.mood || null
       setStats({ streak: calcStreak(allEntries), total: allEntries.length, recentMood })
-
-      // Load today's entry into done state (F23)
-      if (todayRes.data?.length > 0) {
-        const e = todayRes.data[0]
-        setSavedEntry(e.content)
-        setAiResponse(e.ai_response || '')
-        setSavedMood(e.mood || null)
-      }
 
       // Role
       if (roleRes.data?.role === 'admin') setIsAdmin(true)
@@ -421,16 +403,27 @@ export default function Today() {
                 type="button"
                 onClick={toggleVoice}
                 aria-label={listening ? 'Stop recording' : 'Start voice entry'}
-                className={`flex items-center gap-2 px-3 py-2 rounded text-sm border transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded text-sm border transition-colors animate-pulse-when-listening ${
                   listening
-                    ? 'text-error border-error/50 animate-pulse'
+                    ? 'bg-error border-error text-bg animate-pulse font-medium'
                     : 'text-secondary border-border hover:text-text hover:border-muted'
                 }`}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zm-1 17.93V22H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A8.001 8.001 0 0 0 20 12a1 1 0 1 0-2 0 6 6 0 0 1-12 0 1 1 0 1 0-2 0 8.001 8.001 0 0 0 7 7.93z"/>
-                </svg>
-                {listening ? 'Listening…' : 'Voice'}
+                {listening ? (
+                  <>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                      <rect width="10" height="10" rx="1"/>
+                    </svg>
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zm-1 17.93V22H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A8.001 8.001 0 0 0 20 12a1 1 0 1 0-2 0 6 6 0 0 1-12 0 1 1 0 1 0-2 0 8.001 8.001 0 0 0 7 7.93z"/>
+                    </svg>
+                    Voice
+                  </>
+                )}
               </button>
 
               {/* Image placeholder — F07 */}
