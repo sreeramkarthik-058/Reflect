@@ -2,6 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+const MOOD_EMOJI = {
+  Happy:    '😊',
+  Grateful: '🙏',
+  Neutral:  '😐',
+  Stressed: '😤',
+  Anxious:  '😰',
+}
+
 function formatDate(isoString) {
   const d = new Date(isoString)
   return d.toLocaleDateString('en-IN', {
@@ -89,6 +97,15 @@ function EntryPill({ entry, onSave, onDelete, searchQuery }) {
         <span className="font-mono text-xs text-muted shrink-0 pt-0.5 min-w-[120px]">
           {formatDate(entry.created_at)}
         </span>
+        {entry.mood && (
+          <span
+            className="text-sm shrink-0 pt-0.5"
+            aria-label={entry.mood}
+            title={entry.mood}
+          >
+            {MOOD_EMOJI[entry.mood]}
+          </span>
+        )}
         <span className="text-secondary text-sm leading-relaxed line-clamp-2 flex-1">
           {expanded ? null : highlight(preview, searchQuery)}
         </span>
@@ -178,7 +195,7 @@ export default function History() {
 
     const { data, error } = await supabase
       .from('entries')
-      .select('id, content, created_at, input_type')
+      .select('id, content, created_at, input_type, mood')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
 

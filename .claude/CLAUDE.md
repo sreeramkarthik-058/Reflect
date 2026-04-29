@@ -75,7 +75,13 @@ All fonts loaded from Google Fonts.
 - `GET /api/admin/ai-costs`: last 30 days tokens grouped by day, today/week/month/projected totals using 75/25 input/output split at Haiku pricing ($0.80/$4.00 per M)
 - Admin dashboard: Metrics tab with `MetricCard` components, horizontal bar charts, streak 2×2 grid, retention cohort table, per-day cost table with usage bars
 
-### Phase 5 — Full Today Screen `PENDING` (F06, F07, F08, F20–F24)
+### Phase 5 — Full Today Screen `COMPLETE` (F06, F07, F08, F20–F24)
+- Voice entry via Web Speech API (`recognition.continuous`, `lang: 'en-IN'`); mic button pulses red while listening; transcript appends to textarea; `input_type: 'voice'` saved on entry
+- Image upload placeholder: disabled "Photo" button with "Coming soon" tooltip; no backend wired
+- Mood: 5 pill buttons (Happy/Grateful/Neutral/Stressed/Anxious) below textarea; selected pill highlights gold; `mood` column on `entries` (nullable text with check constraint); emoji shown in done state card and History pill headers
+- F23 done state: on mount, if today's entry exists, loads content + ai_response + mood directly into done state — blank form only shown if nothing written yet today
+- Stats strip: streak · total entries · most recent mood emoji (when available)
+- `entries.js` backend: accepts `mood` and `input_type` from request body, stores both on insert
 
 ### Phase 6 — Insights `PENDING` (F25–F28)
 

@@ -20,7 +20,7 @@ const SYSTEM_PROMPT =
   'If the entry signals genuine distress, drop the humour and respond with warmth only.'
 
 router.post('/', async (req, res) => {
-  const { content, user_id } = req.body
+  const { content, user_id, mood, input_type } = req.body
 
   if (!content?.trim() || !user_id) {
     return res.status(400).json({ error: 'content and user_id are required' })
@@ -28,7 +28,12 @@ router.post('/', async (req, res) => {
 
   const { data: entry, error: insertError } = await supabase
     .from('entries')
-    .insert({ user_id, content: content.trim(), input_type: 'text' })
+    .insert({
+      user_id,
+      content:    content.trim(),
+      input_type: input_type || 'text',
+      mood:       mood || null,
+    })
     .select()
     .single()
 

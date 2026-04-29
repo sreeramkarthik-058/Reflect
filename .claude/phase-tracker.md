@@ -12,8 +12,8 @@ F29 Admin login · F30 Role check via user_roles · F31 User list (entry count, 
 ## Phase 4 — Product Metrics `COMPLETE`
 F36 Product metrics dashboard (total users, DAU, entries/day, voice/text split, streak distribution, retention cohorts) · F38 AI cost tracker (tokens/day, daily/weekly/monthly cost, burn rate)
 
-## Phase 5 — Full Today Screen `PENDING`
-F06 · F07 · F08 · F20 · F21 · F22 · F23 · F24
+## Phase 5 — Full Today Screen `COMPLETE`
+F06 Voice entry (Web Speech API, Chrome/Edge) · F07 Image upload placeholder (Coming soon tooltip) · F08 Mood tag (5 pills, saved to entries.mood, emoji in history) · F20 Context-aware greeting · F21 Rotating prompt (6 variants, 4.8s cycle) · F22 Stats strip with streak, total, recent mood · F23 Done state loads today's entry on mount · F24 Visible textarea border
 
 ## Phase 6 — Insights `PENDING`
 F25 · F26 · F27 · F28
