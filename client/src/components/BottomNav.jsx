@@ -1,6 +1,22 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 export default function BottomNav() {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single()
+        .then(({ data }) => { if (data?.role === 'admin') setIsAdmin(true) })
+    })
+  }, [])
+
   return (
     <nav
       className="sm:hidden fixed bottom-0 inset-x-0 bg-surface border-t border-border flex z-40"
@@ -52,6 +68,23 @@ export default function BottomNav() {
         </svg>
         Insights
       </NavLink>
+
+      {isAdmin && (
+        <NavLink
+          to="/admin/dashboard"
+          aria-label="Admin"
+          className={({ isActive }) =>
+            `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors ${
+              isActive ? 'text-gold' : 'text-secondary hover:text-text'
+            }`
+          }
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Admin
+        </NavLink>
+      )}
     </nav>
   )
 }

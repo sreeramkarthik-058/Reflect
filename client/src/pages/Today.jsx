@@ -467,11 +467,11 @@ export default function Today() {
 
         {/* Stats strip — F22 */}
         <div className="mt-12 pt-6 border-t border-border flex items-center gap-8 text-sm">
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="font-mono text-lg text-text">{stats.streak}</span>
             <span className="text-secondary">day streak</span>
           </div>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="font-mono text-lg text-text">{stats.total}</span>
             <span className="text-secondary">entries</span>
           </div>
@@ -483,7 +483,7 @@ export default function Today() {
           )}
           <Link
             to="/history"
-            className="ml-auto text-gold hover:underline transition-opacity py-2 -my-2"
+            className="hidden sm:inline ml-auto text-gold hover:underline transition-opacity py-2 -my-2"
             aria-label="View entry history"
           >
             History →
