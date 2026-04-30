@@ -3,7 +3,7 @@ const router = express.Router()
 const { createClient } = require('@supabase/supabase-js')
 const Anthropic = require('@anthropic-ai/sdk')
 const models = require('../../config/models')
-const { JOURNAL_SYSTEM_PROMPT } = require('../../config/prompts')
+const { JOURNAL_SYSTEM_PROMPT, JOURNAL_MOOD_SYSTEM_PROMPT } = require('../../config/prompts')
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -41,40 +41,39 @@ router.post('/', async (req, res) => {
   let tokensUsed   = null
   let detectedMood = mood || null
 
-  const [journalResult, moodResult] = await Promise.allSettled([
-    anthropic.messages.create({
-      model:      models.journal,
-      max_tokens: 150,
-      system:     JOURNAL_SYSTEM_PROMPT,
-      messages:   [{ role: 'user', content: content.trim() }],
-    }),
-    // Only auto-detect mood when the user didn't pick one manually
-    mood ? Promise.resolve(null) : anthropic.messages.create({
-      model:      models.journal,
-      max_tokens: 5,
-      messages:   [{
-        role:    'user',
-        content: `Classify the mood of this journal entry as exactly one word from: Happy, Grateful, Neutral, Stressed, Anxious. Reply with the single word only.\n\n${content.trim()}`,
-      }],
-    }),
-  ])
-
-  if (journalResult.status === 'fulfilled') {
-    const msg = journalResult.value
-    aiResponse = msg.content[0].text
-    tokensUsed = (msg.usage?.input_tokens ?? 0) + (msg.usage?.output_tokens ?? 0)
-  } else {
-    console.error('[Reflect] Claude error:', journalResult.reason?.message ?? journalResult.reason)
-  }
-
-  if (moodResult.status === 'fulfilled' && moodResult.value) {
-    const raw = moodResult.value.content[0].text.trim()
-    if (VALID_MOODS.has(raw)) detectedMood = raw
-    tokensUsed = (tokensUsed ?? 0) +
-      (moodResult.value.usage?.input_tokens ?? 0) +
-      (moodResult.value.usage?.output_tokens ?? 0)
-  } else if (moodResult.status === 'rejected') {
-    console.error('[Reflect] mood detection error:', moodResult.reason?.message ?? moodResult.reason)
+  try {
+    if (mood) {
+      // User already picked a mood — plain text journal response only
+      const message = await anthropic.messages.create({
+        model:      models.journal,
+        max_tokens: 150,
+        system:     JOURNAL_SYSTEM_PROMPT,
+        messages:   [{ role: 'user', content: content.trim() }],
+      })
+      aiResponse = message.content[0].text
+      tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
+    } else {
+      // No mood selected — single call returns JSON { response, mood }
+      const message = await anthropic.messages.create({
+        model:      models.journal,
+        max_tokens: 200,
+        system:     JOURNAL_MOOD_SYSTEM_PROMPT,
+        messages:   [{ role: 'user', content: content.trim() }],
+      })
+      const raw = message.content[0].text.trim()
+      tokensUsed = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
+      try {
+        const jsonStr = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+        const parsed  = JSON.parse(jsonStr)
+        aiResponse    = parsed.response || raw
+        if (VALID_MOODS.has(parsed.mood)) detectedMood = parsed.mood
+      } catch {
+        // JSON parse failed — use raw text, skip mood detection
+        aiResponse = raw
+      }
+    }
+  } catch (err) {
+    console.error('[Reflect] Claude error:', err.message ?? err)
   }
 
   if (aiResponse || (detectedMood && !mood)) {

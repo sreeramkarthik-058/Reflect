@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -483,8 +484,17 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    if (!sessionStorage.getItem('adminToken')) { navigate('/admin'); return }
-    fetchUsers()
+    async function initAuth() {
+      let token = sessionStorage.getItem('adminToken')
+      if (!token) {
+        // No explicit admin login — try the existing Supabase session (e.g. user clicked Admin from Navbar)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) { navigate('/admin'); return }
+        sessionStorage.setItem('adminToken', session.access_token)
+      }
+      fetchUsers()
+    }
+    initAuth()
   }, [])
 
   useEffect(() => {

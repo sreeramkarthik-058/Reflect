@@ -230,6 +230,8 @@ router.post('/chat', requireUser, async (req, res) => {
     return res.status(400).json({ error: 'messages array is required' })
   }
 
+  const isFirstMessage = messages.length === 1
+
   const { data: entries, error } = await supabase
     .from('entries')
     .select('content, mood, created_at')
@@ -242,24 +244,44 @@ router.post('/chat', requireUser, async (req, res) => {
     return res.status(500).json({ error: 'Failed to fetch entries' })
   }
 
-  const journalContext = (entries || [])
-    .reverse()
-    .map(e => {
-      const d = new Date(e.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
-      const content = e.content.slice(0, 300)
-      return `[${d}${e.mood ? ', ' + e.mood : ''}] ${content}`
-    })
-    .join('\n\n')
+  const entryList = (entries || []).reverse()
+  let journalContext = ''
 
-  const systemPrompt = ASK_SYSTEM_PROMPT +
-    (journalContext ? `\n\nJournal entries (oldest to newest):\n\n${journalContext}` : '')
+  if (entryList.length > 0) {
+    if (isFirstMessage) {
+      // Full entry text on the first message only
+      const lines = entryList.map(e => {
+        const d = new Date(e.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        return `[${d}${e.mood ? ', ' + e.mood : ''}] ${e.content.slice(0, 300)}`
+      })
+      journalContext = `Journal entries (oldest to newest):\n\n${lines.join('\n\n')}`
+    } else {
+      // Compact summary for follow-up turns — avoids re-sending full entry text
+      const moodCounts = {}
+      for (const e of entryList) {
+        if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1
+      }
+      const moodSummary = Object.entries(moodCounts).map(([m, n]) => `${m} ${n}`).join(', ')
+      const oldest = new Date(entryList[0].created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+      const newest = new Date(entryList.at(-1).created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+      journalContext = `Journal summary: ${entryList.length} entries (${oldest} – ${newest}). Moods: ${moodSummary || 'none recorded'}.`
+    }
+  }
+
+  const systemPrompt = ASK_SYSTEM_PROMPT + (journalContext ? `\n\n${journalContext}` : '')
+
+  // Follow-up: send only last 6 messages (≈3 turns); ensure array starts with a user message
+  let messagesToSend = isFirstMessage ? messages : messages.slice(-6)
+  while (messagesToSend.length && messagesToSend[0].role !== 'user') {
+    messagesToSend = messagesToSend.slice(1)
+  }
 
   try {
     const message = await anthropic.messages.create({
       model:      models.journal,
       max_tokens: 250,
       system:     systemPrompt,
-      messages:   messages.map(m => ({ role: m.role, content: m.content })),
+      messages:   messagesToSend.map(m => ({ role: m.role, content: m.content })),
     })
     res.json({ response: message.content[0].text })
   } catch (err) {
