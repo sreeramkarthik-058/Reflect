@@ -30,4 +30,13 @@ Additional Phase 6 deliverables:
 ## Phase 7 — Telegram Bot `PENDING`
 N01 · N02 · N03 · N04 · N05 · N06
 
-## Phase 8 — Deploy `PENDING`
+## Phase 8 — Deploy & Polish `PENDING`
+
+### Deployment
+- Render setup: backend web service + frontend static site; env vars wired per `render.yaml`
+
+### Forgot Password / Reset Password `PENDING`
+- F39 "Forgot password?" link on `Login.jsx` → `/forgot-password`
+- F40 `ForgotPassword.jsx` — email input; calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: '<prod-url>/reset-password' })`; success state with on-brand copy ("Check your inbox — we've sent a reset link"); error states
+- F41 `ResetPassword.jsx` at `/reset-password` — handles the Supabase `#access_token` redirect fragment; calls `supabase.auth.updateUser({ password })` after extracting session from URL hash; success redirects to `/login`; Reflect-voiced copy throughout
+- F42 Route added to `App.jsx` for `/forgot-password` and `/reset-password` (both unprotected)
