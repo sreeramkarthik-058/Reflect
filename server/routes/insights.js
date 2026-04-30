@@ -85,8 +85,40 @@ router.get('/stats', requireUser, async (req, res) => {
   })
 })
 
-// POST /api/insights/digest — weekly AI digest
+// Returns the Monday of the ISO week containing `date` as a YYYY-MM-DD string
+function isoWeekMonday(date) {
+  const d = new Date(date)
+  const day = d.getUTCDay() || 7          // make Sunday = 7
+  d.setUTCDate(d.getUTCDate() - (day - 1))
+  return d.toISOString().slice(0, 10)
+}
+
+// POST /api/insights/digest — weekly AI digest with caching
 router.post('/digest', requireUser, async (req, res) => {
+  const weekStart = isoWeekMonday(new Date())
+
+  // ── 1. Cache hit ─────────────────────────────────────────────────────────────
+  const { data: cached } = await supabase
+    .from('weekly_digests')
+    .select('opening, patterns, concept_name, concept_explanation, question, entry_count')
+    .eq('user_id', req.user.id)
+    .eq('week_start', weekStart)
+    .single()
+
+  if (cached) {
+    return res.json({
+      digest: {
+        opening:  cached.opening,
+        patterns: cached.patterns,
+        concept:  { name: cached.concept_name, explanation: cached.concept_explanation },
+        question: cached.question,
+      },
+      entry_count: cached.entry_count,
+      cached: true,
+    })
+  }
+
+  // ── 2. Fetch this week's entries ──────────────────────────────────────────────
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
   sevenDaysAgo.setHours(0, 0, 0, 0)
@@ -114,27 +146,72 @@ router.post('/digest', requireUser, async (req, res) => {
     return `Entry ${i + 1} (${d}${e.mood ? ', ' + e.mood : ''}): ${e.content}`
   }).join('\n\n')
 
+  // ── 3. Generate via Claude ────────────────────────────────────────────────────
+  let parsed
   try {
     const message = await anthropic.messages.create({
       model:      models.journal,
       max_tokens: 400,
-      system:     DIGEST_SYSTEM_PROMPT,
+      system:     'You are Reflect. Respond only with the JSON object requested. No markdown, no preamble, no explanation outside the JSON.',
       messages: [{
         role:    'user',
         content:
-          `Analyze these journal entries and respond in EXACTLY this format with no deviation:\n\n` +
-          `OPENING: [One sentence observation about the week]\n\n` +
-          `PATTERNS:\n- [Pattern 1]\n- [Pattern 2]\n- [Pattern 3]\n\n` +
-          `CONCEPT: [Psychology concept name] — [one sentence plain English explanation]\n\n` +
-          `QUESTION: [One closing question]\n\n` +
+          `Analyze these journal entries and respond with ONLY a valid JSON object, no other text:\n\n` +
+          `{\n` +
+          `  "opening": "one punchy sentence observation about this week",\n` +
+          `  "patterns": ["pattern 1", "pattern 2", "pattern 3"],\n` +
+          `  "concept": {\n` +
+          `    "name": "Psychology concept name",\n` +
+          `    "explanation": "one sentence plain English explanation"\n` +
+          `  },\n` +
+          `  "question": "one closing question"\n` +
+          `}\n\n` +
           `Journal entries:\n${entryText}`,
       }],
     })
-    res.json({ digest: message.content[0].text, entry_count: entries.length })
+
+    const raw = message.content[0].text.trim()
+    // Strip any accidental markdown fences
+    const jsonStr = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    parsed = JSON.parse(jsonStr)
+
+    if (!parsed.opening || !Array.isArray(parsed.patterns) || !parsed.concept || !parsed.question) {
+      throw new Error('JSON shape invalid')
+    }
   } catch (err) {
-    console.error('[Insights] digest Claude error:', err.message)
+    console.error('[Insights] digest Claude/parse error:', err.message)
     return res.status(500).json({ error: 'Failed to generate digest' })
   }
+
+  // ── 4. Cache the result ───────────────────────────────────────────────────────
+  const { error: upsertError } = await supabase
+    .from('weekly_digests')
+    .upsert({
+      user_id:             req.user.id,
+      week_start:          weekStart,
+      opening:             parsed.opening,
+      patterns:            parsed.patterns,
+      concept_name:        parsed.concept.name,
+      concept_explanation: parsed.concept.explanation,
+      question:            parsed.question,
+      entry_count:         entries.length,
+    }, { onConflict: 'user_id,week_start' })
+
+  if (upsertError) {
+    console.error('[Insights] digest cache upsert error:', upsertError)
+    // Non-fatal — still return the result
+  }
+
+  res.json({
+    digest: {
+      opening:  parsed.opening,
+      patterns: parsed.patterns,
+      concept:  parsed.concept,
+      question: parsed.question,
+    },
+    entry_count: entries.length,
+    cached: false,
+  })
 })
 
 // POST /api/insights/chat — conversational Q&A over the journal

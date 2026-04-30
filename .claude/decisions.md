@@ -162,6 +162,18 @@
 
 ---
 
+## 2026-04-30 — Digest uses JSON output + weekly_digests cache table
+
+**Decision:** `POST /api/insights/digest` now instructs Claude to return a raw JSON object (no markdown, no preamble) matching `{ opening, patterns[], concept: { name, explanation }, question }`. The backend parses it, upserts to `weekly_digests` (keyed on `user_id + week_start`), and returns the structured object directly. The frontend renders each field explicitly with no text parsing.
+
+**Reason:** Three previous attempts at format enforcement via system prompt and labelled sections all failed because Haiku routinely collapsed the output into prose regardless of instructions. JSON is the only output mode that survives prompt drift reliably — the model either produces valid JSON or it throws a parse error we can catch and handle. Rendering on the frontend from structured data means formatting can never regress.
+
+**Caching:** `weekly_digests` stores one digest per user per ISO week (unique constraint). Cache hit skips the Claude call entirely. Cache miss calls Claude, parses, upserts, returns — upsert errors are non-fatal and logged. `week_start` is the Monday of the ISO week computed with `isoWeekMonday()` in the route.
+
+**Alternatives considered:** Streaming with stop sequences — too complex for Haiku; `response_format: json` parameter — not available on this SDK version at time of writing.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.

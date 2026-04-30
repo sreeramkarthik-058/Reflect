@@ -21,38 +21,13 @@ function inlineMarkdown(text) {
   return result
 }
 
-function parseDigest(text) {
-  const get = (label) => {
-    const re = new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n[A-Z]+:|$)`)
-    return (re.exec(text)?.[1] ?? '').trim()
-  }
-  const opening  = get('OPENING')
-  const concept  = get('CONCEPT')
-  const question = get('QUESTION')
-  const patternsRaw = get('PATTERNS')
-  const patterns = patternsRaw
-    .split('\n')
-    .map(l => l.replace(/^-\s*/, '').trim())
-    .filter(Boolean)
-  return { opening, patterns, concept, question }
-}
-
-function DigestView({ text }) {
-  const { opening, patterns, concept, question } = parseDigest(text)
-  // Fallback: if parsing yields nothing, render raw text
-  if (!opening && !patterns.length && !concept && !question) {
-    return <p className="text-secondary text-sm leading-relaxed">{text}</p>
-  }
-
-  // Split CONCEPT into "name — explanation"
-  const conceptParts = concept.split(/\s*—\s*(.+)/)
-  const conceptName  = conceptParts[0]?.trim()
-  const conceptDesc  = conceptParts[1]?.trim()
-
+function DigestView({ digest }) {
+  const { opening, patterns, concept, question } = digest
   return (
     <div className="text-secondary text-sm leading-relaxed space-y-3">
-      {opening  && <p>{inlineMarkdown(opening)}</p>}
-      {patterns.length > 0 && (
+      {opening && <p>{inlineMarkdown(opening)}</p>}
+
+      {patterns?.length > 0 && (
         <ul className="space-y-1.5">
           {patterns.map((p, i) => (
             <li key={i} className="flex gap-2">
@@ -62,13 +37,17 @@ function DigestView({ text }) {
           ))}
         </ul>
       )}
+
       {concept && (
         <p>
-          {conceptName && <em className="not-italic font-medium text-text">{conceptName}</em>}
-          {conceptDesc && <span> — {inlineMarkdown(conceptDesc)}</span>}
+          <span className="font-medium text-text italic">{concept.name}</span>
+          {concept.explanation && <span> — {inlineMarkdown(concept.explanation)}</span>}
         </p>
       )}
-      {question && <p className="text-text">{inlineMarkdown(question)}</p>}
+
+      {question && (
+        <p className="text-text italic">{inlineMarkdown(question)}</p>
+      )}
     </div>
   )
 }
@@ -293,7 +272,12 @@ export default function Insights() {
           {digestError && <p className="text-error text-sm" role="alert">{digestError}</p>}
           {!digestLoading && digest !== null && (
             digest.digest
-              ? <DigestView text={digest.digest} />
+              ? <>
+                  <DigestView digest={digest.digest} />
+                  {digest.cached && (
+                    <p className="text-muted text-xs mt-3">Generated earlier this week</p>
+                  )}
+                </>
               : (
                 <p className="text-muted text-sm italic">
                   Write at least 3 entries this week to get a digest.

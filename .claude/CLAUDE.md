@@ -78,6 +78,23 @@ RLS enabled. Explicit `GRANT SELECT, INSERT, UPDATE, DELETE ON public.entries TO
 | `metadata` | jsonb | Event-specific payload |
 | `created_at` | timestamptz | |
 
+### `weekly_digests`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users.id` |
+| `week_start` | date | Monday of ISO week (YYYY-MM-DD) |
+| `opening` | text | Punchy opening sentence |
+| `patterns` | jsonb | Array of pattern strings |
+| `concept_name` | text | Psychology concept name |
+| `concept_explanation` | text | Plain-English explanation |
+| `question` | text | Closing question |
+| `entry_count` | integer | Entries included in this digest |
+| `tokens_used` | integer | nullable |
+| `created_at` | timestamptz | |
+
+Unique constraint on `(user_id, week_start)` — one digest per user per week. RLS enabled.
+
 ---
 
 ## Frontend Routes
@@ -170,10 +187,12 @@ Reflect is a brilliant, seasoned psychologist — warm, witty, disarmingly charm
 - Never start two responses the same way
 
 ### `DIGEST_SYSTEM_PROMPT` — weekly digest (`max_tokens: 400`)
-- Finds the through-line across the week's entries
-- Names psychological patterns simply (rumination, avoidance, perfectionism, etc.)
-- 4–8 lines; ends with one question or observation that opens something up
-- Used in `POST /api/insights/digest` (requires ≥3 entries in last 7 days)
+- System prompt is persona-only ("respond only with the JSON object requested")
+- Format is enforced in the user message as a JSON template with slot descriptions
+- Claude returns a JSON object: `{ opening, patterns[], concept: { name, explanation }, question }`
+- Backend parses JSON, upserts to `weekly_digests` cache, returns structured object to frontend
+- Frontend renders each field explicitly — no markdown parsing needed
+- Used in `POST /api/insights/digest` (requires ≥3 entries in last 7 days; cached per ISO week)
 
 ### `ASK_SYSTEM_PROMPT` — Q&A chat (`max_tokens: 250`)
 - Answers questions about the user's journal and patterns
@@ -233,7 +252,7 @@ Reflect is a brilliant, seasoned psychologist — warm, witty, disarmingly charm
 ### Phase 6 — Insights `COMPLETE` (F25–F28)
 - **Shared navigation:** `Navbar.jsx` (sticky top, all pages, owns logout + admin link), `BottomNav.jsx` (mobile-only fixed bottom tab bar)
 - **Sticky CTA bar** on Insights: "Understand yourself a little better" pinned below navbar (`sticky top-14 z-20`); links to `/ask` on mobile, opens drawer on desktop
-- **Backend:** `GET /api/insights/stats` (streak + 30-day mood series), `POST /api/insights/digest` (weekly digest, ≥3 entries), `POST /api/insights/chat` (Q&A, last 30 entries, 300-char truncation)
+- **Backend:** `GET /api/insights/stats` (streak + 30-day mood series), `POST /api/insights/digest` (weekly digest, ≥3 entries, JSON output, cached in `weekly_digests`), `POST /api/insights/chat` (Q&A, last 30 entries, 300-char truncation)
 - **`Insights.jsx`:** streak/total cards, SVG mood line graph with trend indicator, weekly digest with markdown rendering, Ask My Journal link
 - **`Ask.jsx`:** mobile full-screen chat page
 - **`ChatUI.jsx`:** shared chat bubbles; markdown rendered in assistant messages; disclaimer banner; clear chat with confirm
