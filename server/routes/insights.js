@@ -97,26 +97,13 @@ function isoWeekMonday(date) {
 router.post('/digest', requireUser, async (req, res) => {
   const weekStart = isoWeekMonday(new Date())
 
-  // ── 1. Cache hit ─────────────────────────────────────────────────────────────
+  // ── 1. Cache + staleness check ───────────────────────────────────────────────
   const { data: cached } = await supabase
     .from('weekly_digests')
-    .select('opening, patterns, concept_name, concept_explanation, question, entry_count')
+    .select('opening, patterns, concept_name, concept_explanation, question, entry_count, created_at')
     .eq('user_id', req.user.id)
     .eq('week_start', weekStart)
     .single()
-
-  if (cached) {
-    return res.json({
-      digest: {
-        opening:  cached.opening,
-        patterns: cached.patterns,
-        concept:  { name: cached.concept_name, explanation: cached.concept_explanation },
-        question: cached.question,
-      },
-      entry_count: cached.entry_count,
-      cached: true,
-    })
-  }
 
   // ── 2. Fetch this week's entries ──────────────────────────────────────────────
   const sevenDaysAgo = new Date()
@@ -125,7 +112,7 @@ router.post('/digest', requireUser, async (req, res) => {
 
   const { data: entries, error } = await supabase
     .from('entries')
-    .select('content, mood, created_at')
+    .select('content, mood, created_at, updated_at')
     .eq('user_id', req.user.id)
     .gte('created_at', sevenDaysAgo.toISOString())
     .order('created_at', { ascending: true })
@@ -139,6 +126,27 @@ router.post('/digest', requireUser, async (req, res) => {
     return res.json({ digest: null, entry_count: entries?.length ?? 0 })
   }
 
+  // ── 3. Serve cache if no entries are newer than it ───────────────────────────
+  if (cached) {
+    const digestTs = new Date(cached.created_at)
+    const hasNewer = entries.some(e =>
+      new Date(e.created_at) > digestTs || (e.updated_at && new Date(e.updated_at) > digestTs)
+    )
+    if (!hasNewer) {
+      return res.json({
+        digest: {
+          opening:  cached.opening,
+          patterns: cached.patterns,
+          concept:  { name: cached.concept_name, explanation: cached.concept_explanation },
+          question: cached.question,
+        },
+        entry_count: cached.entry_count,
+        cached: true,
+      })
+    }
+    console.log('[Insights] digest cache stale — regenerating')
+  }
+
   const entryText = entries.map((e, i) => {
     const d = new Date(e.created_at).toLocaleDateString('en-IN', {
       weekday: 'short', month: 'short', day: 'numeric',
@@ -146,7 +154,7 @@ router.post('/digest', requireUser, async (req, res) => {
     return `Entry ${i + 1} (${d}${e.mood ? ', ' + e.mood : ''}): ${e.content}`
   }).join('\n\n')
 
-  // ── 3. Generate via Claude ────────────────────────────────────────────────────
+  // ── 4. Generate via Claude ────────────────────────────────────────────────────
   let parsed
   try {
     const message = await anthropic.messages.create({
@@ -183,7 +191,7 @@ router.post('/digest', requireUser, async (req, res) => {
     return res.status(500).json({ error: 'Failed to generate digest' })
   }
 
-  // ── 4. Cache the result ───────────────────────────────────────────────────────
+  // ── 5. Cache the result ───────────────────────────────────────────────────────
   const { error: upsertError } = await supabase
     .from('weekly_digests')
     .upsert({
@@ -195,6 +203,7 @@ router.post('/digest', requireUser, async (req, res) => {
       concept_explanation: parsed.concept.explanation,
       question:            parsed.question,
       entry_count:         entries.length,
+      created_at:          new Date().toISOString(), // always stamp to "last generated at"
     }, { onConflict: 'user_id,week_start' })
 
   if (upsertError) {
