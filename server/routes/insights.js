@@ -97,7 +97,7 @@ function isoWeekMonday(date) {
 router.post('/digest', requireUser, async (req, res) => {
   const weekStart = isoWeekMonday(new Date())
 
-  // ── 1. Cache + staleness check ───────────────────────────────────────────────
+  // ── 1. Fetch cached digest ────────────────────────────────────────────────────
   const { data: cached } = await supabase
     .from('weekly_digests')
     .select('opening, patterns, concept_name, concept_explanation, question, entry_count, created_at')
@@ -105,34 +105,17 @@ router.post('/digest', requireUser, async (req, res) => {
     .eq('week_start', weekStart)
     .single()
 
-  // ── 2. Fetch this week's entries ──────────────────────────────────────────────
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-  sevenDaysAgo.setHours(0, 0, 0, 0)
-
-  const { data: entries, error } = await supabase
-    .from('entries')
-    .select('content, mood, created_at, updated_at')
-    .eq('user_id', req.user.id)
-    .gte('created_at', sevenDaysAgo.toISOString())
-    .order('created_at', { ascending: true })
-
-  if (error) {
-    console.error('[Insights] digest fetch error:', error)
-    return res.status(500).json({ error: 'Failed to fetch entries' })
-  }
-
-  if (!entries || entries.length < 3) {
-    return res.json({ digest: null, entry_count: entries?.length ?? 0 })
-  }
-
-  // ── 3. Serve cache if no entries are newer than it ───────────────────────────
+  // ── 2. DB-side staleness check — any entry this week newer than the digest? ──
   if (cached) {
-    const digestTs = new Date(cached.created_at)
-    const hasNewer = entries.some(e =>
-      new Date(e.created_at) > digestTs || (e.updated_at && new Date(e.updated_at) > digestTs)
-    )
-    if (!hasNewer) {
+    const { data: newEntries } = await supabase
+      .from('entries')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .gte('created_at', weekStart)
+      .gt('created_at', cached.created_at)
+      .limit(1)
+
+    if (!newEntries || newEntries.length === 0) {
       return res.json({
         digest: {
           opening:  cached.opening,
@@ -145,6 +128,23 @@ router.post('/digest', requireUser, async (req, res) => {
       })
     }
     console.log('[Insights] digest cache stale — regenerating')
+  }
+
+  // ── 3. Fetch this week's entries for generation ───────────────────────────────
+  const { data: entries, error } = await supabase
+    .from('entries')
+    .select('content, mood, created_at')
+    .eq('user_id', req.user.id)
+    .gte('created_at', weekStart)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[Insights] digest fetch error:', error)
+    return res.status(500).json({ error: 'Failed to fetch entries' })
+  }
+
+  if (!entries || entries.length < 3) {
+    return res.json({ digest: null, entry_count: entries?.length ?? 0 })
   }
 
   const entryText = entries.map((e, i) => {
