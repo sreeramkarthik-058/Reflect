@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
 function renderMarkdown(text) {
   const result = []
   const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g
@@ -229,7 +231,7 @@ export default function Today() {
 
     let data, ok
     try {
-      const res = await fetch('http://localhost:3001/api/entries', {
+      const res = await fetch(`${API_BASE}/api/entries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

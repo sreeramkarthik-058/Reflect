@@ -51,10 +51,12 @@ function MetricCard({ label, value, sub, accent = false }) {
 
 // ── API helper ─────────────────────────────────────────────────────────────────
 
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
 async function adminFetch(path, options = {}) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token ?? ''
-  return fetch(`http://localhost:3001/api/admin${path}`, {
+  return fetch(`${API_BASE}/api/admin${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

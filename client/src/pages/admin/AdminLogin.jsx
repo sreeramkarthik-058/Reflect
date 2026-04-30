@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
 const inputClass =
   'w-full bg-elevated border border-border rounded px-4 py-3 text-base text-text placeholder:text-muted focus:border-gold focus:outline-none transition-colors'
 
@@ -36,7 +38,7 @@ export default function AdminLogin() {
 
     let data, ok
     try {
-      const res = await fetch('http://localhost:3001/api/admin/login', {
+      const res = await fetch(`${API_BASE}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

@@ -4,9 +4,11 @@ import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
 import ChatUI from '../components/ChatUI'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
 async function insightsFetch(path, options = {}) {
   const { data: { session } } = await supabase.auth.getSession()
-  const res = await fetch(`http://localhost:3001/api/insights${path}`, {
+  const res = await fetch(`${API_BASE}/api/insights${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
