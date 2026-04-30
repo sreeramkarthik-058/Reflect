@@ -16,14 +16,15 @@ F36 Product metrics dashboard (total users, DAU, entries/day 7d avg, voice/text 
 F06 Voice entry (Web Speech API, `recognition.continuous`, `lang: 'en-IN'`, Chrome/Edge) · F07 Image upload placeholder (disabled, "Coming soon" tooltip) · F08 Mood tag (5 pills: Happy/Grateful/Neutral/Stressed/Anxious; saved to `entries.mood`; auto-detected by Claude when not manually chosen; emoji in done state + History) · F20 Context-aware greeting (time of day + first name) · F21 Rotating prompts (6 variants, 4.8 s cycle, fade transition) · F22 Stats strip (streak · total entries · most recent mood emoji) · F23 Done state loads today's existing entry on mount · F24 Visible textarea border
 
 ## Phase 6 — Insights `COMPLETE`
-F25 Streak + total entries cards · F26 SVG mood line graph (30 days, trend indicator) · F27 Weekly AI digest (Claude, ≥3 entries threshold, markdown rendered) · F28 Ask My Journal chat (desktop slide-in drawer + mobile `/ask` full-screen; `ChatUI.jsx` shared; markdown in assistant bubbles; disclaimer; clear chat)
+F25 Streak + total entries cards · F26 SVG mood line graph (30 days, trend indicator) · F27 Weekly AI digest (JSON output from Claude; cached in `weekly_digests` table keyed on `user_id + week_start`; staleness check via entry `created_at`/`updated_at` vs digest `created_at`; `DigestView` renders structured object explicitly — no text parsing) · F28 Ask My Journal chat (desktop slide-in drawer + mobile `/ask` full-screen; `ChatUI.jsx` shared; markdown in assistant bubbles; disclaimer; clear chat)
 
 Additional Phase 6 deliverables:
 - `Navbar.jsx` — shared sticky top nav across Today / History / Insights / Ask; owns logout and admin link
-- `BottomNav.jsx` — mobile-only fixed bottom tab bar (`sm:hidden`)
+- `BottomNav.jsx` — mobile-only fixed bottom tab bar (`sm:hidden`); Admin tab (shield icon) visible to admin users only after Insights tab
 - Sticky "Understand yourself" CTA bar on Insights (`sticky top-14 z-20`)
-- AI prompts extracted to `config/prompts.js` (JOURNAL / DIGEST / ASK); full Reflect persona with psychological concept layer, crisis guardrails, Indian urban context
-- `renderMarkdown()` applied in Today.jsx, Insights.jsx, ChatUI.jsx
+- AI prompts extracted to `config/prompts.js` (JOURNAL / DIGEST / ASK); full Reflect persona with mandatory psychological concept per response, crisis guardrails, Indian urban context
+- `inlineMarkdown()` applied in Today.jsx, Insights.jsx, ChatUI.jsx — regex parser for `**bold**` / `*italic*`; no external library
+- Stats strip: "History →" hidden on mobile (`hidden sm:inline`); visible on desktop only
 - WCAG AA audit: muted color `#8C8680`, global `cursor: pointer`, `focus-visible` gold outline, hover states everywhere
 
 ## Phase 7 — Telegram Bot `PENDING`

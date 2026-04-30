@@ -12,7 +12,7 @@ AI-powered journaling app targeting the 18–45 Indian demographic. Designed to 
 - **Google Fonts** — DM Serif Display, Sora, JetBrains Mono loaded via `<link>` in `index.html`
 
 ### Backend
-- **Node.js + Express** — API server on `localhost:3001`
+- **Node.js + Express** — API server on `localhost:3001`; does NOT hot-reload — must be manually restarted after any change to `server/` or `config/`
 - **`server/index.js`** — entry point; mounts all routers, CORS configured for `localhost:5173`
 - **`server/routes/entries.js`** — `POST /api/entries`; insert + Claude call + mood detection
 - **`server/routes/insights.js`** — `GET /stats`, `POST /digest`, `POST /chat`; all require Bearer JWT
@@ -20,7 +20,7 @@ AI-powered journaling app targeting the 18–45 Indian demographic. Designed to 
 
 ### Config
 - **`config/models.js`** — single export `{ journal: 'claude-haiku-4-5-20251001' }`; all Claude model names live here, never hardcoded in routes
-- **`config/prompts.js`** — three named exports: `JOURNAL_SYSTEM_PROMPT`, `DIGEST_SYSTEM_PROMPT`, `ASK_SYSTEM_PROMPT`
+- **`config/prompts.js`** — three named exports: `JOURNAL_SYSTEM_PROMPT`, `DIGEST_SYSTEM_PROMPT`, `ASK_SYSTEM_PROMPT`; never inline prompts in route files
 
 ### Auth & Database
 - **Supabase** — auth + Postgres
@@ -83,17 +83,17 @@ RLS enabled. Explicit `GRANT SELECT, INSERT, UPDATE, DELETE ON public.entries TO
 |---|---|---|
 | `id` | uuid | PK |
 | `user_id` | uuid | FK → `auth.users.id` |
-| `week_start` | date | Monday of ISO week (YYYY-MM-DD) |
+| `week_start` | date | Monday of ISO week (YYYY-MM-DD); computed by `isoWeekMonday()` in insights.js |
 | `opening` | text | Punchy opening sentence |
-| `patterns` | jsonb | Array of pattern strings |
+| `patterns` | jsonb | Array of pattern strings e.g. `["pattern 1", "pattern 2", "pattern 3"]` |
 | `concept_name` | text | Psychology concept name |
-| `concept_explanation` | text | Plain-English explanation |
+| `concept_explanation` | text | Plain-English one-sentence explanation |
 | `question` | text | Closing question |
-| `entry_count` | integer | Entries included in this digest |
+| `entry_count` | integer | Number of entries included in this digest |
 | `tokens_used` | integer | nullable |
-| `created_at` | timestamptz | |
+| `created_at` | timestamptz | Stamped on every upsert — represents "last generated at", not "first created" |
 
-Unique constraint on `(user_id, week_start)` — one digest per user per week. RLS enabled.
+Unique constraint on `(user_id, week_start)` — one digest per user per week. RLS enabled. `GRANT SELECT, INSERT, UPDATE, DELETE ON public.weekly_digests TO authenticated, anon, service_role`.
 
 ---
 
@@ -117,9 +117,9 @@ Unique constraint on `(user_id, week_start)` — one digest per user per week. R
 
 | Component | Role |
 |---|---|
-| `Navbar.jsx` | Shared sticky top nav (all app pages); owns logout + admin link visibility |
-| `BottomNav.jsx` | Mobile-only fixed bottom tab bar (`sm:hidden`); Today / History / Insights |
-| `ChatUI.jsx` | Shared chat bubble UI; used by `Insights.jsx` drawer and `Ask.jsx`; renders markdown in assistant messages |
+| `Navbar.jsx` | Shared sticky top nav (all app pages); owns logout + admin link visibility; queries `user_roles` on mount |
+| `BottomNav.jsx` | Mobile-only fixed bottom tab bar (`sm:hidden`); Today / History / Insights / Admin (admin-only); queries `user_roles` on mount |
+| `ChatUI.jsx` | Shared chat bubble UI; used by `Insights.jsx` drawer and `Ask.jsx`; renders `inlineMarkdown()` on assistant messages; disclaimer banner; clear chat |
 
 ---
 
@@ -129,7 +129,7 @@ Unique constraint on `(user_id, week_start)` — one digest per user per week. R
 |---|---|---|---|
 | `POST` | `/api/entries` | None (user_id in body) | Save entry, trigger Claude response + mood detection |
 | `GET` | `/api/insights/stats` | Bearer JWT | Streak + mood series (30 days) |
-| `POST` | `/api/insights/digest` | Bearer JWT | Weekly AI digest (≥3 entries required) |
+| `POST` | `/api/insights/digest` | Bearer JWT | Weekly AI digest — JSON from Claude, cached in `weekly_digests` |
 | `POST` | `/api/insights/chat` | Bearer JWT | Q&A over last 30 entries |
 | `POST` | `/api/admin/login` | None | Admin credential check, returns JWT |
 | `GET` | `/api/admin/users` | Admin JWT | User list with entry counts |
@@ -152,7 +152,7 @@ Unique constraint on `(user_id, week_start)` — one digest per user per week. R
 | Border | `--color-border` | `#2A2520` |
 | Text | `--color-text` | `#F5F0E8` |
 | Secondary Text | `--color-secondary` | `#A09A8E` |
-| Muted | `--color-muted` | `#8C8680` (WCAG AA verified against all three bg levels) |
+| Muted | `--color-muted` | `#8C8680` (WCAG AA verified: 5.4:1 on bg, 4.8:1 on surface, 4.6:1 on elevated) |
 | Accent Gold | `--color-gold` | `#D4A96A` |
 | Success | `--color-success` | `#6BAE8A` |
 | Error | `--color-error` | `#C96A6A` |
@@ -172,7 +172,7 @@ All fonts loaded from Google Fonts via `index.html`.
 
 ## AI Prompt Architecture
 
-All prompts live in `config/prompts.js`. Never inline in route files.
+All prompts live in `config/prompts.js`. Never inline prompts in route files.
 
 ### Persona (shared across all three prompts)
 Reflect is a brilliant, seasoned psychologist — warm, witty, disarmingly charming. Understands the Indian urban experience: ambition, family pressure, guilt, hustle culture. Never preachy.
@@ -183,20 +183,20 @@ Reflect is a brilliant, seasoned psychologist — warm, witty, disarmingly charm
 
 ### `JOURNAL_SYSTEM_PROMPT` — entry response (`max_tokens: 150`)
 - 3–5 lines; ends with exactly one question that cuts to the real thing
-- **Every response must include exactly one psychological concept** — avoidance, cognitive distortion, fawn response, attribution bias, social comparison, rumination, negativity bias, etc. One sentence, conversational, woven in naturally
+- **Every response must include exactly one psychological concept** — avoidance, cognitive distortion, fawn response, attribution bias, social comparison, rumination, negativity bias, imposter syndrome, emotional labour, spotlight effect, catastrophising, sunk-cost thinking, projection, etc. One sentence, conversational, woven in naturally. Mandatory — no exceptions.
 - Never start two responses the same way
 
 ### `DIGEST_SYSTEM_PROMPT` — weekly digest (`max_tokens: 400`)
-- System prompt is persona-only ("respond only with the JSON object requested")
-- Format is enforced in the user message as a JSON template with slot descriptions
-- Claude returns a JSON object: `{ opening, patterns[], concept: { name, explanation }, question }`
-- Backend parses JSON, upserts to `weekly_digests` cache, returns structured object to frontend
-- Frontend renders each field explicitly — no markdown parsing needed
-- Used in `POST /api/insights/digest` (requires ≥3 entries in last 7 days; cached per ISO week)
+- System prompt is persona-only: "You are Reflect. Respond only with the JSON object requested. No markdown, no preamble, no explanation outside the JSON."
+- Format enforced in the **user message** as a JSON template with slot descriptions
+- Claude returns: `{ "opening": "...", "patterns": ["...", "...", "..."], "concept": { "name": "...", "explanation": "..." }, "question": "..." }`
+- Backend strips any accidental markdown fences, `JSON.parse()`s the response, validates shape, upserts to `weekly_digests`, returns structured object
+- Frontend renders each field explicitly — no text parsing, no markdown splitting
+- Cached per ISO week in `weekly_digests`; invalidated when any entry has `created_at` or `updated_at` newer than `digest.created_at`
 
 ### `ASK_SYSTEM_PROMPT` — Q&A chat (`max_tokens: 250`)
 - Answers questions about the user's journal and patterns
-- References specific entries when relevant
+- References specific entries when relevant; one psychological concept per response
 - Out-of-scope guardrail: redirects non-journal questions warmly
 - No medical/legal/financial advice
 - Context: last 30 entries, each truncated to 300 chars, appended to system prompt
@@ -204,9 +204,21 @@ Reflect is a brilliant, seasoned psychologist — warm, witty, disarmingly charm
 
 ---
 
+## Weekly Digest Cache Logic
+
+`POST /api/insights/digest` flow:
+1. Compute `week_start` = Monday of current ISO week (`isoWeekMonday()`)
+2. Query `weekly_digests` for `(user_id, week_start)` — fetch `created_at` along with content fields
+3. Query `entries` for this week (also fetch `updated_at`)
+4. If fewer than 3 entries → return `{ digest: null, entry_count: N }`
+5. If cache exists → check if any entry has `created_at > digest.created_at` OR `updated_at > digest.created_at`. If none → serve cache (`cached: true`). If any → log "cache stale", fall through to generate.
+6. Call Claude → parse JSON → validate shape → upsert to `weekly_digests` with `created_at: now()` (always stamp so it means "last generated at") → return structured object (`cached: false`)
+
+---
+
 ## Accessibility
 - WCAG AA minimum contrast throughout
-- `cursor: pointer` applied globally to all `button`, `[role="button"]`, `[role="tab"]` elements
+- `cursor: pointer` applied globally to all `button`, `[role="button"]`, `[role="tab"]` elements via `index.css`
 - All interactive elements have hover states
 - Gold `focus-visible` outline (`#D4A96A`) globally via `index.css`
 - Semantic HTML throughout
@@ -247,17 +259,17 @@ Reflect is a brilliant, seasoned psychologist — warm, witty, disarmingly charm
 - Image upload: disabled placeholder with "Coming soon" tooltip; no backend wired
 - Mood: 5 pills (Happy/Grateful/Neutral/Stressed/Anxious); selected highlights gold; auto-detected by Claude when not manually chosen; emoji in done state + History pills
 - Done state (F23): on mount, if today's entry exists → load directly into done state; blank form only if nothing written yet today
-- Stats strip: streak · total entries · most recent mood emoji
+- Stats strip: streak · total entries · most recent mood emoji; "History →" hidden on mobile (`hidden sm:inline`)
 
 ### Phase 6 — Insights `COMPLETE` (F25–F28)
-- **Shared navigation:** `Navbar.jsx` (sticky top, all pages, owns logout + admin link), `BottomNav.jsx` (mobile-only fixed bottom tab bar)
+- **Shared navigation:** `Navbar.jsx` (sticky top, all pages, owns logout + admin link), `BottomNav.jsx` (mobile-only; Today / History / Insights / Admin for admins)
 - **Sticky CTA bar** on Insights: "Understand yourself a little better" pinned below navbar (`sticky top-14 z-20`); links to `/ask` on mobile, opens drawer on desktop
-- **Backend:** `GET /api/insights/stats` (streak + 30-day mood series), `POST /api/insights/digest` (weekly digest, ≥3 entries, JSON output, cached in `weekly_digests`), `POST /api/insights/chat` (Q&A, last 30 entries, 300-char truncation)
-- **`Insights.jsx`:** streak/total cards, SVG mood line graph with trend indicator, weekly digest with markdown rendering, Ask My Journal link
-- **`Ask.jsx`:** mobile full-screen chat page
-- **`ChatUI.jsx`:** shared chat bubbles; markdown rendered in assistant messages; disclaimer banner; clear chat with confirm
-- **AI system prompts** extracted to `config/prompts.js`: three separate prompts with full Reflect persona, psychological concept layer, crisis guardrails, Indian urban context
-- **Markdown rendering:** `renderMarkdown()` in `Today.jsx`, `Insights.jsx`, and `ChatUI.jsx` — parses `**bold**` and `*italic*`
+- **Stats:** `GET /api/insights/stats` — streak + 30-day mood series; SVG mood line graph with trend indicator
+- **Weekly digest:** JSON output from Claude, structured object returned to frontend, cached in `weekly_digests` with staleness invalidation on new/edited entries; `DigestView` renders opening/patterns/concept/question explicitly
+- **Ask My Journal:** `POST /api/insights/chat` (Q&A, last 30 entries, 300-char truncation); desktop slide-in drawer + mobile `/ask` full-screen; `ChatUI.jsx` shared component
+- **AI system prompts** in `config/prompts.js`: full Reflect persona, mandatory psychological concept in journal responses, JSON-enforced digest format, crisis guardrails, Indian urban context
+- **Inline markdown:** `inlineMarkdown()` in `Today.jsx`, `Insights.jsx`, `ChatUI.jsx` — regex parser for `**bold**` / `*italic*`; no external library
+- **WCAG AA audit:** muted `#8C8680`, global `cursor: pointer`, gold `focus-visible` outline, hover states everywhere
 
 ### Phase 7 — Telegram Bot `PENDING` (N01–N06)
 

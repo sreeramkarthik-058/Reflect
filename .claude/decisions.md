@@ -174,6 +174,16 @@
 
 ---
 
+## 2026-04-30 — Digest cache invalidation: two-bug fix (missing created_at + stale upsert)
+
+**Decision:** Cache staleness for `weekly_digests` is determined by comparing entry `created_at`/`updated_at` against the digest's own `created_at`. Two bugs that together caused infinite regeneration were fixed: (1) `created_at` was not included in the `weekly_digests` select, so the staleness comparison had no timestamp to work with. (2) The upsert did not write `created_at` in its payload, so Postgres left it at the original insert time — meaning every subsequent call found entries newer than the stale timestamp and regenerated forever. Fix: added `created_at` to the select and added `created_at: new Date().toISOString()` to the upsert so it always represents "last generated at".
+
+**Reason:** Caching logic must be tested with a full lifecycle (generate → cache hit → invalidate → regenerate → cache hit again), not just the happy path. A single-call test would not have caught either bug.
+
+**Alternatives considered:** Using a separate `last_generated_at` column — more explicit but adds a column that duplicates `created_at`'s semantic on upsert; the convention of "created_at = last generated" is documented in the schema and CLAUDE.md.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.
