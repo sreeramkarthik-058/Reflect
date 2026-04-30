@@ -184,6 +184,18 @@
 
 ---
 
+## 2026-04-30 — Admin portal: reuse Supabase session, remove sessionStorage
+
+**Decision:** The admin portal now uses the existing Supabase client session for all authentication — no separate `sessionStorage.adminToken`. `AdminLogin` checks for a live session on mount and redirects straight to `/admin/dashboard` if the user is already authenticated and has `role = 'admin'` in `user_roles`. `AdminDashboard`'s `adminFetch` helper calls `supabase.auth.getSession()` on every request to get a fresh, auto-refreshed token. The Navbar and BottomNav Admin links point to `/admin` (the gate) rather than `/admin/dashboard` directly.
+
+**Reason:** `sessionStorage` is cleared on tab close, navigation between browser sessions, and certain React Router transitions — all of which caused the admin portal to show the login form to an already-authenticated admin user. The Supabase client manages its own session persistence and token refresh; duplicating the token into sessionStorage was redundant and fragile.
+
+**Login form still works:** When no session exists, the form is shown. On successful server-side login, the frontend calls `supabase.auth.signInWithPassword` to establish the Supabase client session before navigating to the dashboard.
+
+**Alternatives considered:** Storing the token in `localStorage` instead of `sessionStorage` — rejected; same fragility, just longer-lived. Verifying the role via a dedicated backend endpoint on every mount — rejected; querying `user_roles` directly from the frontend Supabase client is equivalent and avoids an extra network round-trip.
+
+---
+
 ## 2026-04-28 — Tailwind CSS v4 (CSS-first, no tailwind.config.js)
 
 **Decision:** Project uses Tailwind v4. Design tokens are defined as CSS custom properties in the global stylesheet, not in `tailwind.config.js`. There is no config file.
