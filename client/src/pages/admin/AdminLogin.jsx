@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 
 const inputClass =
   'w-full bg-elevated border border-border rounded px-4 py-3 text-base text-text placeholder:text-muted focus:border-gold focus:outline-none transition-colors'
@@ -10,6 +11,23 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single()
+        if (data?.role === 'admin') { navigate('/admin/dashboard', { replace: true }); return }
+      }
+      setChecking(false)
+    }
+    checkSession()
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -37,10 +55,18 @@ export default function AdminLogin() {
       return
     }
 
-    sessionStorage.setItem('adminToken', data.access_token)
-    sessionStorage.setItem('adminUser', JSON.stringify(data.user))
+    // Sign in via Supabase client so the session is available to the dashboard
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) {
+      setError('Signed in on server but could not establish client session.')
+      setSubmitting(false)
+      return
+    }
+
     navigate('/admin/dashboard')
   }
+
+  if (checking) return <div className="min-h-screen bg-bg" aria-hidden="true" />
 
   return (
     <main className="min-h-screen bg-bg flex items-center justify-center px-6 py-12">

@@ -51,8 +51,9 @@ function MetricCard({ label, value, sub, accent = false }) {
 
 // ── API helper ─────────────────────────────────────────────────────────────────
 
-function adminFetch(path, options = {}) {
-  const token = sessionStorage.getItem('adminToken')
+async function adminFetch(path, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? ''
   return fetch(`http://localhost:3001/api/admin${path}`, {
     ...options,
     headers: {
@@ -478,20 +479,13 @@ export default function AdminDashboard() {
   const [filters, setFilters]           = useState(EMPTY_FILTERS)
 
   function handleUnauthorized() {
-    sessionStorage.removeItem('adminToken')
-    sessionStorage.removeItem('adminUser')
     navigate('/admin')
   }
 
   useEffect(() => {
     async function initAuth() {
-      let token = sessionStorage.getItem('adminToken')
-      if (!token) {
-        // No explicit admin login — try the existing Supabase session (e.g. user clicked Admin from Navbar)
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) { navigate('/admin'); return }
-        sessionStorage.setItem('adminToken', session.access_token)
-      }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { navigate('/admin'); return }
       fetchUsers()
     }
     initAuth()
@@ -569,9 +563,8 @@ export default function AdminDashboard() {
     fetchLogs(EMPTY_FILTERS)
   }
 
-  function handleLogout() {
-    sessionStorage.removeItem('adminToken')
-    sessionStorage.removeItem('adminUser')
+  async function handleLogout() {
+    await supabase.auth.signOut()
     navigate('/admin')
   }
 

@@ -36,7 +36,7 @@ export default function Navbar() {
           <NavLink to="/history"  className={linkClass}>History</NavLink>
           <NavLink to="/insights" className={linkClass}>Insights</NavLink>
           {isAdmin && (
-            <NavLink to="/admin/dashboard" className={linkClass}>Admin</NavLink>
+            <NavLink to="/admin" className={linkClass}>Admin</NavLink>
           )}
         </div>
         <button

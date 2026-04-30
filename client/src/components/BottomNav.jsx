@@ -71,7 +71,7 @@ export default function BottomNav() {
 
       {isAdmin && (
         <NavLink
-          to="/admin/dashboard"
+          to="/admin"
           aria-label="Admin"
           className={({ isActive }) =>
             `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs transition-colors ${
