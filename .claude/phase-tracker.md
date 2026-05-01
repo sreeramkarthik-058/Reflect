@@ -40,3 +40,10 @@ N01 · N02 · N03 · N04 · N05 · N06
 - F40 `ForgotPassword.jsx` — email input; calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: '<prod-url>/reset-password' })`; success state with on-brand copy ("Check your inbox — we've sent a reset link"); error states
 - F41 `ResetPassword.jsx` at `/reset-password` — handles the Supabase `#access_token` redirect fragment; calls `supabase.auth.updateUser({ password })` after extracting session from URL hash; success redirects to `/login`; Reflect-voiced copy throughout
 - F42 Route added to `App.jsx` for `/forgot-password` and `/reset-password` (both unprotected)
+
+### User Feedback `PENDING`
+- F43 Supabase `feedback` table — `id`, `user_id` (nullable FK → `auth.users.id`), `rating` (integer 1–5), `message` (text), `email` (text, nullable), `created_at`; RLS enabled; service role insert via backend
+- F44 `POST /api/feedback` backend route — no auth required (accepts anonymous); inserts to `feedback` table via service role; rate-limit consideration noted
+- F45 `FeedbackButton` component — subtle, present on all app screens (e.g. small icon in `Navbar.jsx` or a fixed bottom-right corner element on desktop; hidden behind BottomNav area on mobile); opens `FeedbackModal`
+- F46 `FeedbackModal` — 5-star rating tap targets; free-text area with copy: "Tell us what's broken. Or what's brilliant. We can handle both."; optional email field ("So we can follow up, if you want"); submit → success state: "Got it. Every word of it." with auto-close; error state; spinner on submit
+- F47 Admin Feedback tab in `AdminDashboard.jsx` — table of all submissions (rating, message, email if provided, user_id if logged in, timestamp); sortable by rating and date
