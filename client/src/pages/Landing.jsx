@@ -68,32 +68,44 @@ function MoodLineMini() {
 
 function InsightsMockup() {
   return (
-    <div className="relative mx-auto lg:mx-0 lg:ml-auto" style={{ maxWidth: 260 }}>
+    <div className="relative mx-auto lg:mx-0 lg:ml-auto" style={{ maxWidth: 300 }}>
       {/* Soft glow behind phone */}
       <div
         className="absolute inset-0 rounded-[2.5rem] pointer-events-none"
         style={{ boxShadow: '0 0 80px rgba(212,169,106,0.12)', filter: 'blur(2px)' }}
       />
       {/* Phone frame */}
-      <div className="relative bg-bg border-2 border-border rounded-[2.5rem] overflow-hidden" style={{ paddingTop: 20, paddingBottom: 20 }}>
+      <div className="relative bg-bg border-2 border-border rounded-[2.5rem] overflow-hidden" style={{ paddingTop: 20, paddingBottom: 24 }}>
         {/* Notch */}
-        <div className="flex justify-center mb-3">
+        <div className="flex justify-center mb-4">
           <div className="w-16 h-1.5 bg-border rounded-full" />
         </div>
 
         {/* Screen content */}
-        <div className="px-3 space-y-3">
+        <div className="px-4 space-y-3">
           {/* Mini navbar */}
-          <div className="flex items-center justify-between px-1 mb-1">
-            <span className="font-heading text-text" style={{ fontSize: 13 }}>Reflect</span>
+          <div className="flex items-center justify-between px-1 mb-2">
+            <span className="font-heading text-text" style={{ fontSize: 14 }}>Reflect</span>
             <span className="text-muted" style={{ fontSize: 9 }}>9:41</span>
+          </div>
+
+          {/* Stats strip */}
+          <div className="flex gap-2">
+            <div className="flex-1 bg-surface rounded-xl p-2.5 border border-border text-center">
+              <p className="font-mono text-gold font-bold" style={{ fontSize: 16 }}>7</p>
+              <p className="text-muted" style={{ fontSize: 8 }}>day streak</p>
+            </div>
+            <div className="flex-1 bg-surface rounded-xl p-2.5 border border-border text-center">
+              <p className="font-mono text-text font-bold" style={{ fontSize: 16 }}>24</p>
+              <p className="text-muted" style={{ fontSize: 8 }}>entries</p>
+            </div>
           </div>
 
           {/* Mood card */}
           <div className="bg-surface rounded-xl p-3 border border-border">
             <div className="flex justify-between items-center mb-2">
               <p className="text-text font-medium" style={{ fontSize: 11 }}>Mood this week</p>
-              <span className="text-gold" style={{ fontSize: 10 }}>+14%</span>
+              <span className="text-gold" style={{ fontSize: 10 }}>↑ improving</span>
             </div>
             <MoodLineMini />
             <div className="flex justify-between mt-1.5">
@@ -124,7 +136,7 @@ function InsightsMockup() {
           </div>
 
           {/* Ask bar */}
-          <div className="bg-surface rounded-full border border-border px-3 flex items-center gap-2" style={{ paddingTop: 6, paddingBottom: 6 }}>
+          <div className="bg-surface rounded-full border border-border px-3 flex items-center gap-2" style={{ paddingTop: 7, paddingBottom: 7 }}>
             <p className="text-muted flex-1" style={{ fontSize: 10 }}>Ask my journal...</p>
             <div className="w-4 h-4 rounded-full bg-gold/20 flex items-center justify-center">
               <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#D4A96A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -135,7 +147,7 @@ function InsightsMockup() {
         </div>
 
         {/* Home indicator */}
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-5">
           <div className="w-20 h-1 bg-border rounded-full" />
         </div>
       </div>
@@ -200,17 +212,55 @@ export default function Landing() {
     <div className="min-h-screen bg-bg">
 
       {/* Nav */}
-      <nav className="sticky top-0 z-30 bg-bg/95 backdrop-blur-sm border-b border-border px-6 h-16 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5">
+      <nav className="sticky top-0 z-30 bg-bg/95 backdrop-blur-sm border-b border-border px-6 h-16 flex items-center shrink-0">
+        {/* Left: logo + brand */}
+        <div className="flex items-center gap-2.5 flex-1">
           <img src="/logo.png" alt="Reflect logo" className="h-8 w-auto" />
           <span className="font-heading text-xl text-text leading-none">Reflect</span>
+          <span className="text-muted text-xs hidden sm:inline">by Sreeram</span>
         </div>
-        <Link
-          to="/login"
-          className="px-5 py-2 border border-border text-text text-sm rounded transition-colors hover:border-gold hover:text-gold"
-        >
-          Log in
-        </Link>
+
+        {/* Center: badge pill */}
+        <div className="hidden lg:flex flex-1 justify-center">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-elevated text-muted text-xs whitespace-nowrap">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="#D4A96A" aria-hidden="true">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Vibecoded by a PM. Powered by curiosity and mild panic.
+          </span>
+        </div>
+
+        {/* Right: social icons + login */}
+        <div className="flex items-center gap-3 flex-1 justify-end">
+          <a
+            href="https://www.linkedin.com/in/sreeram-sonti/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="LinkedIn"
+            className="text-muted hover:text-secondary transition-colors hidden sm:block"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+          </a>
+          <a
+            href="https://github.com/sreeramkarthik-058/Reflect"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub"
+            className="text-muted hover:text-secondary transition-colors hidden sm:block"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <Link
+            to="/login"
+            className="px-5 py-2 border border-border text-text text-sm rounded transition-colors hover:border-gold hover:text-gold"
+          >
+            Log in
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
@@ -252,7 +302,7 @@ export default function Landing() {
 
       {/* Insights section */}
       <section className="bg-surface border-y border-border">
-        <div className="max-w-6xl mx-auto px-6 py-20 sm:py-28">
+        <div className="max-w-6xl mx-auto px-6 py-12 sm:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
 
             {/* Left: copy — on mobile shows second */}
