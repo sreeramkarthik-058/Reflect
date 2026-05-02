@@ -47,3 +47,13 @@ N01 · N02 · N03 · N04 · N05 · N06
 - F45 `FeedbackButton` component — subtle, present on all app screens (e.g. small icon in `Navbar.jsx` or a fixed bottom-right corner element on desktop; hidden behind BottomNav area on mobile); opens `FeedbackModal`
 - F46 `FeedbackModal` — 5-star rating tap targets; free-text area with copy: "Tell us what's broken. Or what's brilliant. We can handle both."; optional email field ("So we can follow up, if you want"); submit → success state: "Got it. Every word of it." with auto-close; error state; spinner on submit
 - F47 Admin Feedback tab in `AdminDashboard.jsx` — table of all submissions (rating, message, email if provided, user_id if logged in, timestamp); sortable by rating and date
+
+## Phase 9 — Personalisation & Goals `PENDING`
+
+### F-GOALS: User Goal Setting
+- Users can define short-term and long-term personal goals via a goals UI (e.g. on Today or a dedicated `/goals` screen)
+- Goals stored per user in a new `user_goals` Supabase table — `id`, `user_id` (FK → `auth.users.id`), `title` (text), `description` (text, nullable), `type` (`'short_term'` | `'long_term'`), `status` (`'active'` | `'completed'` | `'paused'`), `created_at`, `updated_at`
+- AI journal responses incorporate active goals — when Claude responds to an entry, it is aware of the user's goals and nudges toward progress naturally (no lecturing)
+- Weekly digest includes a goals-progress section — references active goals, notes journal entries that show movement or stagnation, poses a forward-looking question about the goal
+- Insights screen shows a "Your Goals" section with goal cards and simple progress indicators (based on AI inference from journal content, not manual tracking)
+- Ask My Journal is goals-aware — system prompt includes active goals alongside recent entries; can answer "Am I making progress on my goals?", "Which goal am I neglecting?", etc.
