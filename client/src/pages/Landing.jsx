@@ -303,10 +303,10 @@ export default function Landing() {
       {/* Insights section */}
       <section className="bg-surface border-y border-border">
         <div className="max-w-6xl mx-auto px-6 py-12 sm:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
 
             {/* Left: copy — on mobile shows second */}
-            <div className="flex flex-col justify-center space-y-6 order-2 lg:order-1">
+            <div className="space-y-6 order-2 lg:order-1">
               <p className="text-xs font-semibold tracking-[0.18em] text-gold uppercase">
                 Insights
               </p>

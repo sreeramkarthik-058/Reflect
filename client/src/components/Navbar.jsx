@@ -28,7 +28,10 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-30 bg-bg border-b border-border px-6 h-14 flex items-center justify-between shrink-0">
-      <span className="font-heading text-2xl text-text leading-none">Reflect</span>
+      <div className="flex items-center gap-2">
+        <img src="/logo.png" alt="Reflect logo" className="h-6 w-auto" />
+        <span className="font-heading text-2xl text-text leading-none">Reflect</span>
+      </div>
       <div className="flex items-center gap-1">
         {/* Desktop nav links — hidden on mobile, handled by BottomNav */}
         <div className="hidden sm:flex items-center gap-1">
