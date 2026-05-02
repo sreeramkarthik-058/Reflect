@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import Footer from '../../components/Footer'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -71,10 +72,14 @@ export default function AdminLogin() {
   if (checking) return <div className="min-h-screen bg-bg" aria-hidden="true" />
 
   return (
-    <main className="min-h-screen bg-bg flex items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-bg flex flex-col">
+    <main className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-10">
-          <span className="font-heading text-3xl text-text block mb-1">Reflect</span>
+          <div className="flex items-center gap-2 mb-1">
+            <img src="/logo.png" alt="" className="h-7 w-auto" />
+            <span className="font-heading text-3xl text-text leading-none">Reflect</span>
+          </div>
           <span className="text-muted text-xs tracking-widest uppercase">Admin Portal</span>
         </div>
 
@@ -124,5 +129,7 @@ export default function AdminLogin() {
         </form>
       </div>
     </main>
+    <Footer />
+    </div>
   )
 }

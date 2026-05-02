@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import Footer from '../../components/Footer'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -856,6 +857,7 @@ export default function AdminDashboard() {
         )}
 
       </main>
+      <Footer />
     </div>
   )
 }

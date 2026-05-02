@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Footer from '../components/Footer'
 
 const inputClass =
   'w-full bg-elevated border border-border rounded px-4 py-3 text-text placeholder:text-muted text-base focus:border-gold focus:outline-none transition-colors'
@@ -36,14 +37,16 @@ export default function Signup() {
   }
 
   return (
-    <main className="min-h-screen bg-bg flex items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-bg flex flex-col">
+    <main className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <Link
           to="/"
-          className="font-heading text-3xl text-text hover:text-gold transition-colors block mb-10"
+          className="flex items-center gap-2 mb-10 w-fit hover:opacity-80 transition-opacity"
           aria-label="Reflect home"
         >
-          Reflect
+          <img src="/logo.png" alt="" className="h-7 w-auto" />
+          <span className="font-heading text-3xl text-text leading-none">Reflect</span>
         </Link>
 
         <h1 className="text-xl font-semibold text-text mb-1">Create account</h1>
@@ -125,5 +128,7 @@ export default function Signup() {
         )}
       </div>
     </main>
+    <Footer />
+    </div>
   )
 }
