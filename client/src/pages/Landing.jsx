@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Footer from '../components/Footer'
 
 // ── Demo chat in hero ──────────────────────────────────────────────────────────
 
@@ -212,16 +213,6 @@ export default function Landing() {
         </Link>
       </nav>
 
-      {/* Wit strip */}
-      <div className="bg-surface border-b border-border px-6 py-3.5">
-        <p
-          className="text-center text-sm italic font-light tracking-wide"
-          style={{ color: 'rgba(212,169,106,0.65)' }}
-        >
-          The journaling app that talks back. We know. Hear us out.
-        </p>
-      </div>
-
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 py-20 sm:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
@@ -314,6 +305,8 @@ export default function Landing() {
           </Link>
         </div>
       </section>
+
+      <Footer />
 
     </div>
   )

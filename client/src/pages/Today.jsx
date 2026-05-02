@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
+import Footer from '../components/Footer'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -494,6 +495,7 @@ export default function Today() {
 
       </main>
 
+      <Footer aboveBottomNav />
       <BottomNav />
     </div>
   )

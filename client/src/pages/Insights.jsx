@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
 import ChatUI from '../components/ChatUI'
+import Footer from '../components/Footer'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -326,6 +327,7 @@ export default function Insights() {
         </>
       )}
 
+      <Footer aboveBottomNav />
       <BottomNav />
     </div>
   )

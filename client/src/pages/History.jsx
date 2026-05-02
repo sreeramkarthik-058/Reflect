@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
+import Footer from '../components/Footer'
 
 const MOOD_EMOJI = {
   Happy:    '😊',
@@ -374,6 +375,7 @@ export default function History() {
 
       </main>
 
+      <Footer aboveBottomNav />
       <BottomNav />
     </div>
   )

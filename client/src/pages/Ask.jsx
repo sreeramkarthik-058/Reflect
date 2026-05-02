@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
 import ChatUI from '../components/ChatUI'
+import Footer from '../components/Footer'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -41,10 +42,10 @@ export default function Ask() {
   }
 
   return (
-    <div className="h-screen bg-bg flex flex-col">
+    <div className="min-h-screen bg-bg flex flex-col">
       <Navbar />
 
-      <div className="flex-1 min-h-0 pb-16 sm:pb-0">
+      <div className="flex-1 min-h-0 pb-16 sm:pb-0" style={{ minHeight: 'calc(100vh - 56px)' }}>
         <ChatUI
           messages={messages}
           onSend={handleSend}
@@ -53,6 +54,7 @@ export default function Ask() {
         />
       </div>
 
+      <Footer aboveBottomNav />
       <BottomNav />
     </div>
   )
