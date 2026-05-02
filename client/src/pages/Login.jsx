@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import Navbar from '../components/Navbar'
+import AuthNavbar from '../components/AuthNavbar'
 import Footer from '../components/Footer'
 
 const inputClass =
@@ -32,7 +32,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      <Navbar />
+      <AuthNavbar />
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <h1 className="text-xl font-semibold text-text mb-1">Welcome back</h1>
