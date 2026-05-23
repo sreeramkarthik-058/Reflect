@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
-import Footer from '../components/Footer'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -56,8 +55,7 @@ function calcStreak(entries) {
       ? todayMs - DAY_MS
       : null
   if (startMs === null) return 0
-  let streak = 0
-  let cur = startMs
+  let streak = 0, cur = startMs
   while (daySet.has(cur)) { streak++; cur -= DAY_MS }
   return streak
 }
@@ -66,51 +64,80 @@ function moodEmoji(label) {
   return MOODS.find(m => m.label === label)?.emoji ?? ''
 }
 
+function UserBubble({ msg }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[80%] sm:max-w-[70%]">
+        {msg.mood && (
+          <div className="flex justify-end items-center gap-1 mb-1 pr-1">
+            <span className="text-sm" aria-hidden="true">{moodEmoji(msg.mood)}</span>
+            <span className="text-muted text-xs">{msg.mood}</span>
+          </div>
+        )}
+        <div className="bg-elevated border border-border rounded-2xl rounded-tr-sm px-4 py-3">
+          <p className="text-secondary text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AIBubble({ msg }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-8 h-8 rounded-full bg-elevated border border-gold/30 flex items-center justify-center shrink-0 mt-0.5">
+        <span className="font-heading text-gold text-xs leading-none">R</span>
+      </div>
+      <div className="max-w-[80%] sm:max-w-[70%] bg-surface border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+        {msg.error ? (
+          <p className="text-error text-sm">Could not save. Please try again.</p>
+        ) : msg.loading ? (
+          <p className="text-muted text-sm italic animate-pulse">Reflect is thinking…</p>
+        ) : (
+          <p className="text-secondary text-sm leading-relaxed whitespace-pre-wrap" aria-live="polite">
+            {renderMarkdown(msg.content)}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Today() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
 
-  // Form
   const [content, setContent]     = useState('')
   const [mood, setMood]           = useState(null)
   const [inputType, setInputType] = useState('text')
   const [listening, setListening] = useState(false)
 
-  // Done state
-  const [savedEntry, setSavedEntry] = useState('')
-  const [savedMood, setSavedMood]   = useState(null)
-  const [aiResponse, setAiResponse] = useState('')
-  const [aiLoading, setAiLoading]   = useState(false)
-
-  // Submit
+  const [messages, setMessages]   = useState([])
   const [submitting, setSubmitting]   = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  // Stats
-  const [stats, setStats]             = useState({ streak: 0, total: 0, recentMood: null })
+  const [stats, setStats]               = useState({ streak: 0, total: 0, recentMood: null })
   const [writtenToday, setWrittenToday] = useState(false)
 
-  // Prompts
   const [promptIndex, setPromptIndex]   = useState(0)
   const [promptFading, setPromptFading] = useState(false)
 
   const textareaRef    = useRef(null)
   const recognitionRef = useRef(null)
+  const messagesEndRef = useRef(null)
 
-  // ── Init ──────────────────────────────────────────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
       if (!user) return
-
       const { data: entries } = await supabase
         .from('entries')
         .select('created_at, mood')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-
       const allEntries = entries || []
       const todayMs    = dayKey(new Date())
       setWrittenToday(allEntries.some(e => dayKey(e.created_at) === todayMs))
@@ -133,20 +160,26 @@ export default function Today() {
     return () => clearInterval(id)
   }, [])
 
-  // ── Textarea auto-grow ────────────────────────────────────────────────────────
+  // ── Textarea auto-grow (capped) ───────────────────────────────────────────────
 
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [content])
+
+  // ── Scroll to bottom on new messages ─────────────────────────────────────────
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   // ── Cleanup voice on unmount ──────────────────────────────────────────────────
 
   useEffect(() => () => { recognitionRef.current?.stop() }, [])
 
-  // ── Refresh stats after save ──────────────────────────────────────────────────
+  // ── Refresh stats ─────────────────────────────────────────────────────────────
 
   async function refreshStats(userId) {
     const { data: entries } = await supabase
@@ -169,19 +202,13 @@ export default function Today() {
       setListening(false)
       return
     }
-
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) {
-      alert('Voice input is only available on Chrome and Edge.')
-      return
-    }
-
+    if (!SR) { alert('Voice input is only available on Chrome and Edge.'); return }
     const recognition = new SR()
-    recognitionRef.current = recognition
+    recognitionRef.current  = recognition
     recognition.continuous     = true
     recognition.interimResults = false
     recognition.lang           = 'en-IN'
-
     recognition.onresult = event => {
       const transcript = Array.from(event.results)
         .slice(event.resultIndex)
@@ -190,10 +217,8 @@ export default function Today() {
         .trim()
       if (transcript) setContent(prev => prev ? `${prev} ${transcript}` : transcript)
     }
-
     recognition.onend   = () => setListening(false)
     recognition.onerror = () => setListening(false)
-
     recognition.start()
     setListening(true)
     setInputType('voice')
@@ -202,35 +227,31 @@ export default function Today() {
   // ── Submit ────────────────────────────────────────────────────────────────────
 
   async function handleSubmit(e) {
-    e.preventDefault()
+    e?.preventDefault()
     const trimmed = content.trim()
-    if (!trimmed) return
+    if (!trimmed || submitting) return
 
-    // Stop any live recording before saving
-    if (listening) {
-      recognitionRef.current?.stop()
-      setListening(false)
-    }
-
-    setSubmitting(true)
-    setSubmitError('')
-    setAiResponse('')
+    if (listening) { recognitionRef.current?.stop(); setListening(false) }
 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { navigate('/login'); return }
 
     const currentMood      = mood
     const currentInputType = inputType
+    const userMsgId        = Date.now()
+    const aiMsgId          = Date.now() + 1
 
-    setSavedEntry(trimmed)
-    setSavedMood(currentMood)
+    setMessages(prev => [
+      ...prev,
+      { id: userMsgId, type: 'user', content: trimmed, mood: currentMood },
+      { id: aiMsgId,   type: 'ai',   content: '', loading: true },
+    ])
     setContent('')
     setMood(null)
     setInputType('text')
-    setSubmitting(false)
-    setAiLoading(true)
+    setSubmitting(true)
+    setSubmitError('')
 
-    let data, ok
     try {
       const res = await fetch(`${API_BASE}/api/entries`, {
         method: 'POST',
@@ -242,122 +263,78 @@ export default function Today() {
           input_type: currentInputType,
         }),
       })
-      ok   = res.ok
-      data = await res.json()
+      const data = await res.json()
+      if (!res.ok) throw new Error('save failed')
+      setMessages(prev => prev.map(m =>
+        m.id === aiMsgId ? { ...m, content: data.ai_response || '', loading: false } : m
+      ))
+      await refreshStats(session.user.id)
     } catch {
-      setContent(trimmed)
-      setMood(currentMood)
-      setSavedEntry('')
-      setSavedMood(null)
-      setSubmitError('Could not reach the server. Is the backend running?')
-      setAiLoading(false)
-      return
+      setMessages(prev => prev.map(m =>
+        m.id === aiMsgId ? { ...m, loading: false, error: true } : m
+      ))
+      setSubmitError('Could not save. Try again.')
+    } finally {
+      setSubmitting(false)
     }
-
-    if (!ok) {
-      setContent(trimmed)
-      setMood(currentMood)
-      setSavedEntry('')
-      setSavedMood(null)
-      setSubmitError('Something went sideways. The entry did not save.')
-      setAiLoading(false)
-      return
-    }
-
-    setAiLoading(false)
-    if (data.ai_response) setAiResponse(data.ai_response)
-    await refreshStats(session.user.id)
-  }
-
-  function handleWriteAnother() {
-    setSavedEntry('')
-    setSavedMood(null)
-    setAiResponse('')
-    setMood(null)
-    setInputType('text')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  const firstName = user?.user_metadata?.full_name?.split(' ')[0]
-
+  const firstName    = user?.user_metadata?.full_name?.split(' ')[0]
   const greetingBody = writtenToday
     ? "You've written today. Reflect has read it and has some thoughts. As usual."
     : "You haven't written today yet. Your future self is taking notes, but no pressure."
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
-
+    <div className="bg-bg flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       <Navbar />
 
-      {/* Main content */}
-      <main className="flex-1 w-full max-w-[680px] mx-auto px-6 py-10 pb-24 sm:pb-10">
+      {/* Scrollable chat area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
 
-        {/* Greeting — F20 */}
-        <div className="mb-9">
-          {firstName && (
-            <h1 className="font-heading text-3xl text-text mb-1">{firstName}</h1>
-          )}
-          <p className="text-secondary text-sm leading-relaxed">{greetingBody}</p>
-          {writtenToday && (
-            <Link
-              to="/insights"
-              className="inline-block mt-2 text-sm text-gold hover:opacity-75 transition-opacity"
-            >
-              → See what your entries say about you
-            </Link>
-          )}
-        </div>
-
-        {savedEntry ? (
-          /* Done state — F23 */
-          <div className="flex flex-col gap-5">
-            <div className="bg-elevated border border-border rounded px-4 py-3">
-              {savedMood && (
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-base" aria-hidden="true">{moodEmoji(savedMood)}</span>
-                  <span className="text-xs text-muted">{savedMood}</span>
-                </div>
+        {messages.length === 0 ? (
+          /* Empty state — greeting + stats + prompt hint */
+          <div className="max-w-[680px] mx-auto px-6 pt-10 pb-6">
+            <div className="mb-8">
+              {firstName && (
+                <h1 className="font-heading text-3xl text-text mb-1">{firstName}</h1>
               )}
-              <p className="text-muted text-sm leading-relaxed whitespace-pre-wrap">{savedEntry}</p>
+              <p className="text-secondary text-sm leading-relaxed">{greetingBody}</p>
+              {writtenToday && (
+                <Link
+                  to="/insights"
+                  className="inline-block mt-2 text-sm text-gold hover:opacity-75 transition-opacity"
+                >
+                  → See what your entries say about you
+                </Link>
+              )}
             </div>
 
-            {aiLoading && (
-              <div
-                className="pl-4 border-l-2 border-gold/40"
-                aria-live="polite"
-                aria-label="Reflect is generating a response"
-              >
-                <p className="text-muted text-sm italic animate-pulse">Reflect is thinking…</p>
+            <div className="flex items-center gap-8 text-sm pt-4 border-t border-border mb-10">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-lg text-text">{stats.streak}</span>
+                <span className="text-secondary">day streak</span>
               </div>
-            )}
-
-            {aiResponse && !aiLoading && (
-              <div
-                className="pl-4 border-l-2 border-gold/40"
-                aria-live="polite"
-                aria-label="Response from Reflect"
-              >
-                <p className="text-secondary text-sm leading-relaxed whitespace-pre-wrap">
-                  {renderMarkdown(aiResponse)}
-                </p>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-lg text-text">{stats.total}</span>
+                <span className="text-secondary">entries</span>
               </div>
-            )}
-
-            {!aiLoading && (
-              <button
-                onClick={handleWriteAnother}
-                className="self-start px-6 py-3 border border-gold text-gold text-sm font-semibold rounded hover:bg-gold/10 transition-colors"
+              {stats.recentMood && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base" aria-hidden="true">{moodEmoji(stats.recentMood)}</span>
+                  <span className="text-secondary text-xs">{stats.recentMood.toLowerCase()}</span>
+                </div>
+              )}
+              <Link
+                to="/history"
+                className="hidden sm:inline ml-auto text-gold hover:underline transition-opacity"
+                aria-label="View entry history"
               >
-                Write another entry
-              </button>
-            )}
-          </div>
-        ) : (
-          /* Form state */
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+                History →
+              </Link>
+            </div>
 
-            {/* Rotating prompt — F21 */}
             <p
               aria-live="polite"
               className={`text-secondary text-sm italic select-none transition-opacity duration-300 ${
@@ -366,136 +343,113 @@ export default function Today() {
             >
               {PROMPTS[promptIndex]}
             </p>
+          </div>
+        ) : (
+          /* Chat messages */
+          <div className="max-w-[680px] mx-auto px-4 pt-6 pb-4 flex flex-col gap-4">
+            {messages.map(msg =>
+              msg.type === 'user'
+                ? <UserBubble key={msg.id} msg={msg} />
+                : <AIBubble   key={msg.id} msg={msg} />
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
 
-            {/* Textarea — F24: visible border */}
+      </div>
+
+      {/* Sticky input bar */}
+      <div className="shrink-0 bg-bg border-t border-border pb-16 sm:pb-0">
+        <div className="max-w-[680px] mx-auto px-4 pt-3 pb-3">
+
+          {submitError && (
+            <p className="text-error text-xs mb-2" role="alert">{submitError}</p>
+          )}
+
+          {/* Mood pills — horizontal scroll, no visible scrollbar */}
+          <div
+            className="flex gap-2 overflow-x-auto no-scrollbar mb-2 pb-1"
+            role="group"
+            aria-label="Select your mood"
+          >
+            {MOODS.map(({ label, emoji }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setMood(prev => prev === label ? null : label)}
+                aria-pressed={mood === label}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors shrink-0 ${
+                  mood === label
+                    ? 'border-gold text-gold bg-gold/10'
+                    : 'border-border text-secondary hover:border-muted hover:text-text'
+                }`}
+              >
+                <span aria-hidden="true">{emoji}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Textarea row */}
+          <form onSubmit={handleSubmit} className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Start writing..."
-              rows={6}
-              className="w-full bg-elevated border border-muted/40 rounded px-4 py-3 text-text placeholder:text-muted text-base leading-relaxed focus:border-gold focus:outline-none transition-colors resize-none min-h-[160px]"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
+              placeholder={messages.length === 0 ? PROMPTS[promptIndex] : 'Write anything…'}
+              rows={1}
+              style={{ maxHeight: 120 }}
+              className="flex-1 bg-elevated border border-muted/40 rounded-2xl px-4 py-2.5 text-text placeholder:text-muted text-sm leading-relaxed focus:border-gold focus:outline-none transition-colors resize-none overflow-y-auto"
               aria-label="Journal entry"
             />
 
-            {/* Input type buttons — F06, F07 */}
-            <div className="flex items-center gap-2">
-
-              {/* Voice — F06 */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Voice */}
               <button
                 type="button"
                 onClick={toggleVoice}
                 aria-label={listening ? 'Stop recording' : 'Start voice entry'}
-                className={`flex items-center gap-2 px-3 py-2 rounded text-sm border transition-colors animate-pulse-when-listening ${
+                className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors ${
                   listening
-                    ? 'bg-error border-error text-bg animate-pulse font-medium'
-                    : 'text-secondary border-border hover:text-text hover:border-muted'
+                    ? 'bg-error border-error text-bg animate-pulse'
+                    : 'border-border text-secondary hover:text-text hover:border-muted'
                 }`}
               >
                 {listening ? (
-                  <>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
-                      <rect width="10" height="10" rx="1"/>
-                    </svg>
-                    Stop
-                  </>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                    <rect width="10" height="10" rx="1"/>
+                  </svg>
                 ) : (
-                  <>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zm-1 17.93V22H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A8.001 8.001 0 0 0 20 12a1 1 0 1 0-2 0 6 6 0 0 1-12 0 1 1 0 1 0-2 0 8.001 8.001 0 0 0 7 7.93z"/>
-                    </svg>
-                    Voice
-                  </>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zm-1 17.93V22H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A8.001 8.001 0 0 0 20 12a1 1 0 1 0-2 0 6 6 0 0 1-12 0 1 1 0 1 0-2 0 8.001 8.001 0 0 0 7 7.93z"/>
+                  </svg>
                 )}
               </button>
 
-              {/* Image placeholder — F07 */}
-              <div className="relative group">
-                <button
-                  type="button"
-                  disabled
-                  aria-label="Upload photo — coming soon"
-                  className="flex items-center gap-2 px-3 py-2 rounded text-sm text-muted border border-border cursor-not-allowed opacity-50"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                  Photo
-                </button>
-                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded bg-elevated border border-border px-2 py-1 text-xs text-muted opacity-0 transition-opacity group-hover:opacity-100">
-                  Coming soon
-                </span>
-              </div>
+              {/* Send */}
+              <button
+                type="submit"
+                disabled={submitting || !content.trim()}
+                aria-label="Send entry"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-gold text-bg disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
             </div>
-
-            {/* Mood pills — F08 */}
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Select your mood">
-              {MOODS.map(({ label, emoji }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setMood(prev => prev === label ? null : label)}
-                  aria-pressed={mood === label}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                    mood === label
-                      ? 'border-gold text-gold bg-gold/10'
-                      : 'border-border text-secondary hover:border-muted hover:text-text'
-                  }`}
-                >
-                  <span aria-hidden="true">{emoji}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-muted text-xs leading-relaxed">
-              Your entries are private and encrypted. Reflect never shares your writing with anyone.
-            </p>
-
-            {submitError && (
-              <p className="text-error text-sm" role="alert">{submitError}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting || !content.trim()}
-              className="self-start bg-gold text-bg text-sm font-semibold px-6 py-3 rounded hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {submitting ? 'Saving…' : 'Save entry'}
-            </button>
           </form>
-        )}
 
-        {/* Stats strip — F22 */}
-        <div className="mt-12 pt-6 border-t border-border flex items-center gap-8 text-sm">
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-lg text-text">{stats.streak}</span>
-            <span className="text-secondary">day streak</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono text-lg text-text">{stats.total}</span>
-            <span className="text-secondary">entries</span>
-          </div>
-          {stats.recentMood && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-base" aria-hidden="true">{moodEmoji(stats.recentMood)}</span>
-              <span className="text-secondary text-xs">{stats.recentMood.toLowerCase()}</span>
-            </div>
-          )}
-          <Link
-            to="/history"
-            className="hidden sm:inline ml-auto text-gold hover:underline transition-opacity py-2 -my-2"
-            aria-label="View entry history"
-          >
-            History →
-          </Link>
         </div>
+      </div>
 
-      </main>
-
-      <Footer aboveBottomNav />
       <BottomNav />
     </div>
   )

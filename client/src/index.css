@@ -50,3 +50,12 @@ button:not(:disabled),
   outline: 2px solid #D4A96A;
   outline-offset: 2px;
 }
+
+/* Hide scrollbars while keeping scroll behaviour */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
