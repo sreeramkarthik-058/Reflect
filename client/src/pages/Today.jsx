@@ -287,7 +287,7 @@ export default function Today() {
     : "You haven't written today yet. Your future self is taking notes, but no pressure."
 
   return (
-    <div className="bg-bg flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+    <div className="fixed inset-0 bg-bg flex flex-col overflow-hidden">
       <Navbar />
 
       {/* Scrollable chat area */}

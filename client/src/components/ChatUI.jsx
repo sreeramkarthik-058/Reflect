@@ -14,7 +14,7 @@ function renderMarkdown(text) {
   return result
 }
 
-export default function ChatUI({ messages, onSend, loading, onClear }) {
+export default function ChatUI({ messages, onSend, loading, onClear, mobilePad = false }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
 
@@ -36,7 +36,7 @@ export default function ChatUI({ messages, onSend, loading, onClear }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Disclaimer */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 shrink-0">
         <p className="text-xs text-muted italic">
@@ -54,7 +54,7 @@ export default function ChatUI({ messages, onSend, loading, onClear }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         {messages.length === 0 && (
           <p className="text-muted text-sm italic text-center mt-8">
             Ask me anything about your journal…
@@ -83,7 +83,7 @@ export default function ChatUI({ messages, onSend, loading, onClear }) {
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-border px-4 py-3 flex gap-2 shrink-0">
+      <form onSubmit={handleSubmit} className={`border-t border-border px-4 flex gap-2 shrink-0 ${mobilePad ? 'pt-3 pb-[4.5rem] sm:pb-3' : 'py-3'}`}>
         <input
           type="text"
           value={input}
