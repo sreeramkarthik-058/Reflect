@@ -1,9 +1,9 @@
-export default function Footer({ aboveBottomNav = false }) {
+export default function Footer({ aboveBottomNav = false, hideOnMobile = false }) {
   return (
     <footer
       className={`border-t border-border bg-bg w-full ${
         aboveBottomNav ? 'pb-20 sm:pb-0' : ''
-      }`}
+      } ${hideOnMobile ? 'hidden sm:block' : ''}`}
     >
       <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Left: logo + name */}

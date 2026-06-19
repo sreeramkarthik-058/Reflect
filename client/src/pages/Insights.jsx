@@ -264,7 +264,7 @@ export default function Insights() {
 
       </main>
 
-      <Footer aboveBottomNav />
+      <Footer aboveBottomNav hideOnMobile />
       {/* CTA button and ✦ float button both control the same chat panel */}
       <FloatingJournalChat isOpen={chatOpen} onOpenChange={setChatOpen} />
       <BottomNav />

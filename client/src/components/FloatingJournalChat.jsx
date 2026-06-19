@@ -83,7 +83,7 @@ export default function FloatingJournalChat({
         <button
           onClick={() => setOpen(true)}
           aria-label="Chat with your journal"
-          className={`fixed bottom-[5.5rem] right-4 sm:bottom-6 sm:right-6 z-40 w-12 h-12 bg-gold text-bg rounded-full shadow-xl items-center justify-center hover:opacity-90 transition-opacity ${hideMobile ? 'hidden sm:flex' : 'flex'}`}
+          className={`fixed bottom-[5.5rem] right-4 sm:bottom-6 sm:right-6 z-50 w-12 h-12 bg-gold text-bg rounded-full shadow-xl items-center justify-center hover:opacity-90 transition-opacity ${hideMobile ? 'hidden sm:flex' : 'flex'}`}
         >
           <span className="font-heading text-xl leading-none select-none">✦</span>
         </button>

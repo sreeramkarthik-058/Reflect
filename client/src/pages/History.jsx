@@ -376,7 +376,7 @@ export default function History() {
 
       </main>
 
-      <Footer aboveBottomNav />
+      <Footer aboveBottomNav hideOnMobile />
       <FloatingJournalChat />
       <BottomNav />
     </div>
