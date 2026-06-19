@@ -30,16 +30,26 @@ Additional Phase 6 deliverables:
 ## Phase 7 — Telegram Bot `PENDING`
 N01 · N02 · N03 · N04 · N05 · N06
 
-## Phase 8 — Deploy & Polish `PENDING`
+## Phase 8 — Deploy & Polish `COMPLETE`
 
 ### Deployment
 - Render setup: backend web service + frontend static site; env vars wired per `render.yaml`
 
-### Forgot Password / Reset Password `PENDING`
+### Responsive Design Overhaul `COMPLETE`
+- Today.jsx: `fixed inset-0` viewport lock; chat bubbles (user right, AI left) with auto-scroll; sticky input bar above BottomNav on mobile
+- Ask.jsx: `fixed inset-0` layout; Footer removed (chat interface); `flex-1 min-h-0 flex flex-col overflow-hidden` wrapper so ChatUI fills correctly
+- ChatUI.jsx: `flex-1 min-h-0` (was `h-full` — unreliable in flex context); `min-h-0` on messages div; `mobilePad` prop adds `pb-[4.5rem] sm:pb-3` for BottomNav clearance on Ask page
+- Insights.jsx drawer: `flex-1 min-h-0 flex flex-col overflow-hidden` wrapper fixes intermittent "input jumps to top" race condition
+
+### Landing Page with Branding `COMPLETE`
+- Full marketing landing page at `/`: hero with DemoChat mockup, Insights phone mockup, feature cards, bottom CTA, Footer
+- Sticky nav with logo, LinkedIn/GitHub icons, Log in button; badge pill on lg+ screens
+
+### Forgot Password / Reset Password `COMPLETE`
 - F39 "Forgot password?" link on `Login.jsx` → `/forgot-password`
-- F40 `ForgotPassword.jsx` — email input; calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: '<prod-url>/reset-password' })`; success state with on-brand copy ("Check your inbox — we've sent a reset link"); error states
-- F41 `ResetPassword.jsx` at `/reset-password` — handles the Supabase `#access_token` redirect fragment; calls `supabase.auth.updateUser({ password })` after extracting session from URL hash; success redirects to `/login`; Reflect-voiced copy throughout
-- F42 Route added to `App.jsx` for `/forgot-password` and `/reset-password` (both unprotected)
+- F40 `ForgotPassword.jsx` — email input; calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })`; success state; error state
+- F41 `ResetPassword.jsx` at `/reset-password` — listens for Supabase `PASSWORD_RECOVERY` event (`detectSessionInUrl: true` handles hash); 4 s timeout shows "expired" state if no event fires; new + confirm password fields; calls `supabase.auth.updateUser({ password })`; success redirects to `/login` after 2 s
+- F42 Routes added to `App.jsx` for `/forgot-password` and `/reset-password` (both unprotected)
 
 ### User Feedback `PENDING`
 - F43 Supabase `feedback` table — `id`, `user_id` (nullable FK → `auth.users.id`), `rating` (integer 1–5), `message` (text), `email` (text, nullable), `created_at`; RLS enabled; service role insert via backend
