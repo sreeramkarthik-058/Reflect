@@ -18,25 +18,33 @@ export default function ResetPassword() {
   useEffect(() => {
     let mounted = true
 
-    async function tryExchangeCode() {
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (!code) return // no PKCE code — wait for PASSWORD_RECOVERY event instead
-
-      // PKCE flow: exchange the one-time code for a session, then clean the URL
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-      window.history.replaceState({}, '', '/reset-password')
+    async function init() {
+      // 1. Session already exists — detectSessionInUrl consumed the hash before we got here
+      const { data: { session } } = await supabase.auth.getSession()
       if (!mounted) return
-      setView(error ? 'expired' : 'ready')
+      if (session) { setView('ready'); return }
+
+      // 2. PKCE flow — ?code= query param present, exchange it for a session
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        window.history.replaceState({}, '', '/reset-password')
+        if (!mounted) return
+        setView(error ? 'expired' : 'ready')
+        return
+      }
+
+      // 3. Implicit flow — PASSWORD_RECOVERY event fires when the hash is processed
+      // (handled by the onAuthStateChange listener below)
     }
 
-    tryExchangeCode()
+    init()
 
-    // Implicit flow fallback: PASSWORD_RECOVERY fires when a hash-based link is processed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (mounted && event === 'PASSWORD_RECOVERY') setView('ready')
     })
 
-    // If neither path establishes a session within 15 s, the link is expired or invalid
+    // 4. Last resort: if nothing fires within 15 s the link is expired or invalid
     const timer = setTimeout(() => {
       if (mounted) setView(v => v === 'loading' ? 'expired' : v)
     }, 15000)
