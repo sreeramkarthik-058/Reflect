@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
-import ChatUI from '../components/ChatUI'
 import Footer from '../components/Footer'
 import FloatingJournalChat from '../components/FloatingJournalChat'
 
@@ -149,9 +147,8 @@ export default function Insights() {
   const [digestLoading, setDigestLoading] = useState(false)
   const [digestError, setDigestError]     = useState('')
 
-  const [chatOpen, setChatOpen]       = useState(false)
-  const [chatMessages, setChatMessages] = useState([])
-  const [chatLoading, setChatLoading] = useState(false)
+  // Controls FloatingJournalChat — both CTA and float button share this state
+  const [chatOpen, setChatOpen] = useState(false)
 
   useEffect(() => {
     loadStats()
@@ -182,23 +179,6 @@ export default function Insights() {
     }
   }
 
-  async function handleChatSend(text) {
-    const next = [...chatMessages, { role: 'user', content: text }]
-    setChatMessages(next)
-    setChatLoading(true)
-    try {
-      const data = await insightsFetch('/chat', {
-        method: 'POST',
-        body: JSON.stringify({ messages: next }),
-      })
-      if (data.response) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: data.response }])
-      }
-    } catch { /* silent */ } finally {
-      setChatLoading(false)
-    }
-  }
-
   const trend = getTrend(stats?.mood_series)
 
   return (
@@ -206,21 +186,12 @@ export default function Insights() {
 
       <Navbar />
 
-      {/* Sticky CTA — always visible below nav */}
+      {/* Sticky CTA — both mobile and desktop open the same FloatingJournalChat */}
       <div className="sticky top-14 z-20 bg-surface border-b border-border w-full">
-        <Link
-          to="/ask"
-          className="sm:hidden flex items-center justify-center gap-2.5 px-6 py-3 hover:bg-elevated transition-colors"
-          aria-label="Ask My Journal"
-        >
-          <span className="text-gold text-xs leading-none">✦</span>
-          <span className="text-sm text-secondary">Understand yourself a little better</span>
-          <span className="text-gold text-sm">→</span>
-        </Link>
         <button
           onClick={() => setChatOpen(true)}
-          className="hidden sm:flex w-full items-center justify-center gap-2.5 px-6 py-3 hover:bg-elevated transition-colors"
-          aria-label="Open Ask My Journal"
+          className="w-full flex items-center justify-center gap-2.5 px-6 py-3 hover:bg-elevated transition-colors"
+          aria-label="Open chat with your journal"
         >
           <span className="text-gold text-xs leading-none">✦</span>
           <span className="text-sm text-secondary">Understand yourself a little better</span>
@@ -291,45 +262,11 @@ export default function Insights() {
           )}
         </div>
 
-
       </main>
 
-      {/* Chat drawer — desktop only */}
-      {chatOpen && (
-        <>
-          <div
-            className="hidden sm:block fixed inset-0 bg-bg/60 z-40"
-            onClick={() => setChatOpen(false)}
-            aria-hidden="true"
-          />
-          <aside
-            className="hidden sm:flex fixed right-0 top-0 bottom-0 w-[400px] bg-surface border-l border-border flex-col z-50"
-            aria-label="Ask My Journal chat"
-          >
-            <div className="flex items-center justify-between px-4 h-14 border-b border-border shrink-0">
-              <h2 className="font-medium text-text text-sm">Ask My Journal</h2>
-              <button
-                onClick={() => setChatOpen(false)}
-                className="text-secondary hover:text-text transition-colors text-lg leading-none"
-                aria-label="Close chat"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <ChatUI
-                messages={chatMessages}
-                onSend={handleChatSend}
-                loading={chatLoading}
-                onClear={() => setChatMessages([])}
-              />
-            </div>
-          </aside>
-        </>
-      )}
-
       <Footer aboveBottomNav />
-      <FloatingJournalChat hidden={chatOpen} />
+      {/* CTA button and ✦ float button both control the same chat panel */}
+      <FloatingJournalChat isOpen={chatOpen} onOpenChange={setChatOpen} />
       <BottomNav />
     </div>
   )
