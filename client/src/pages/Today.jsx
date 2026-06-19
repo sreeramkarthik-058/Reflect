@@ -3,22 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
+import FloatingJournalChat from '../components/FloatingJournalChat'
+import { renderMarkdown } from '../lib/renderMarkdown'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
-
-function renderMarkdown(text) {
-  const result = []
-  const regex = /\*\*(.+?)\*\*|\*(.+?)\*/g
-  let last = 0, m, k = 0
-  while ((m = regex.exec(text)) !== null) {
-    if (m.index > last) result.push(text.slice(last, m.index))
-    if (m[0].startsWith('**')) result.push(<strong key={k++}>{m[1]}</strong>)
-    else result.push(<em key={k++}>{m[2]}</em>)
-    last = regex.lastIndex
-  }
-  if (last < text.length) result.push(text.slice(last))
-  return result
-}
 
 const PROMPTS = [
   "What's actually on your mind right now?",
@@ -94,9 +82,9 @@ function AIBubble({ msg }) {
         ) : msg.loading ? (
           <p className="text-muted text-sm italic animate-pulse">Reflect is thinking…</p>
         ) : (
-          <p className="text-secondary text-sm leading-relaxed whitespace-pre-wrap" aria-live="polite">
+          <div className="text-secondary text-sm leading-relaxed" aria-live="polite">
             {renderMarkdown(msg.content)}
-          </p>
+          </div>
         )}
       </div>
     </div>
@@ -450,6 +438,7 @@ export default function Today() {
         </div>
       </div>
 
+      <FloatingJournalChat />
       <BottomNav />
     </div>
   )

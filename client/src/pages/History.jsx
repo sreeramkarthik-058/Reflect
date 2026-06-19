@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import Navbar from '../components/Navbar'
 import BottomNav from '../components/BottomNav'
 import Footer from '../components/Footer'
+import FloatingJournalChat from '../components/FloatingJournalChat'
 
 const MOOD_EMOJI = {
   Happy:    '😊',
@@ -376,6 +377,7 @@ export default function History() {
       </main>
 
       <Footer aboveBottomNav />
+      <FloatingJournalChat />
       <BottomNav />
     </div>
   )
