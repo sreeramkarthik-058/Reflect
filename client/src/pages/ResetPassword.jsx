@@ -16,18 +16,33 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    // Supabase fires PASSWORD_RECOVERY when the user arrives via a reset email link.
-    // detectSessionInUrl: true (in supabase.js) handles extracting the token from the URL hash.
+    let mounted = true
+
+    async function tryExchangeCode() {
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (!code) return // no PKCE code — wait for PASSWORD_RECOVERY event instead
+
+      // PKCE flow: exchange the one-time code for a session, then clean the URL
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      window.history.replaceState({}, '', '/reset-password')
+      if (!mounted) return
+      setView(error ? 'expired' : 'ready')
+    }
+
+    tryExchangeCode()
+
+    // Implicit flow fallback: PASSWORD_RECOVERY fires when a hash-based link is processed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setView('ready')
+      if (mounted && event === 'PASSWORD_RECOVERY') setView('ready')
     })
 
-    // If no recovery event fires within 4 s, the link is expired or was never clicked.
+    // If neither path establishes a session within 15 s, the link is expired or invalid
     const timer = setTimeout(() => {
-      setView(v => v === 'loading' ? 'expired' : v)
-    }, 4000)
+      if (mounted) setView(v => v === 'loading' ? 'expired' : v)
+    }, 15000)
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
       clearTimeout(timer)
     }
