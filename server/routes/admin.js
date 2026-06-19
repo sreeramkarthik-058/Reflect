@@ -409,4 +409,28 @@ router.get('/ai-costs', requireAdmin, async (req, res) => {
   })
 })
 
+// GET /api/admin/feedback
+router.get('/feedback', requireAdmin, async (req, res) => {
+  const { sort = 'date', order = 'desc' } = req.query
+
+  const orderCol  = sort === 'rating' ? 'rating' : 'created_at'
+  const ascending = order === 'asc'
+
+  const { data: rows, error } = await supabaseAdmin
+    .from('feedback')
+    .select('*')
+    .order(orderCol, { ascending })
+
+  if (error) {
+    console.error('[Admin] feedback fetch error:', error)
+    return res.status(500).json({ error: 'Failed to fetch feedback' })
+  }
+
+  const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
+  const emailMap = {}
+  for (const u of users || []) emailMap[u.id] = u.email
+
+  res.json(rows.map(r => ({ ...r, user_email: emailMap[r.user_id] || null })))
+})
+
 module.exports = router

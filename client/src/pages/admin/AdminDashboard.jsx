@@ -481,6 +481,13 @@ export default function AdminDashboard() {
   const [logsFetched, setLogsFetched]   = useState(false)
   const [filters, setFilters]           = useState(EMPTY_FILTERS)
 
+  // Feedback
+  const [feedback, setFeedback]           = useState([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbackError, setFeedbackError] = useState('')
+  const [feedbackFetched, setFeedbackFetched] = useState(false)
+  const [feedbackSort, setFeedbackSort]   = useState({ col: 'date', order: 'desc' })
+
   function handleUnauthorized() {
     navigate('/admin')
   }
@@ -496,6 +503,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeTab === 'activity' && !logsFetched) fetchLogs(EMPTY_FILTERS)
+    if (activeTab === 'feedback' && !feedbackFetched) fetchFeedback(feedbackSort)
   }, [activeTab])
 
   // ── Users ──
@@ -566,6 +574,32 @@ export default function AdminDashboard() {
     fetchLogs(EMPTY_FILTERS)
   }
 
+  // ── Feedback ──
+
+  async function fetchFeedback(sort = feedbackSort) {
+    setFeedbackLoading(true)
+    setFeedbackError('')
+    try {
+      const res = await adminFetch(`/feedback?sort=${sort.col}&order=${sort.order}`)
+      if (res.status === 401) { handleUnauthorized(); return }
+      if (!res.ok) { setFeedbackError('Failed to load feedback.'); setFeedbackLoading(false); return }
+      setFeedback(await res.json())
+      setFeedbackFetched(true)
+    } catch {
+      setFeedbackError('Could not reach the server.')
+    }
+    setFeedbackLoading(false)
+  }
+
+  function toggleFeedbackSort(col) {
+    const next = {
+      col,
+      order: feedbackSort.col === col && feedbackSort.order === 'desc' ? 'asc' : 'desc',
+    }
+    setFeedbackSort(next)
+    fetchFeedback(next)
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     navigate('/admin')
@@ -614,6 +648,7 @@ export default function AdminDashboard() {
         <button className={tabClass('users')}    onClick={() => setActiveTab('users')}>Users</button>
         <button className={tabClass('activity')} onClick={() => setActiveTab('activity')}>Activity</button>
         <button className={tabClass('metrics')}  onClick={() => setActiveTab('metrics')}>Metrics</button>
+        <button className={tabClass('feedback')} onClick={() => setActiveTab('feedback')}>Feedback</button>
       </div>
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-8">
@@ -854,6 +889,99 @@ export default function AdminDashboard() {
         {/* ── Metrics tab ───────────────────────────────────────────────────── */}
         {activeTab === 'metrics' && (
           <MetricsTab onUnauthorized={handleUnauthorized} />
+        )}
+
+        {/* ── Feedback tab ──────────────────────────────────────────────────── */}
+        {activeTab === 'feedback' && (
+          <section aria-label="User feedback">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="font-heading text-2xl text-text">
+                Feedback
+                {!feedbackLoading && (
+                  <span className="ml-3 font-mono text-base text-muted font-normal">
+                    {feedback.length}
+                  </span>
+                )}
+              </h1>
+              <button
+                onClick={() => fetchFeedback(feedbackSort)}
+                className="text-sm text-secondary hover:text-text transition-colors py-2"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {feedbackLoading && <p className="text-secondary text-sm">Loading feedback…</p>}
+            {feedbackError && <p className="text-error text-sm" role="alert">{feedbackError}</p>}
+
+            {!feedbackLoading && !feedbackError && (
+              <div className="border border-border rounded overflow-hidden">
+                <div className="grid grid-cols-[80px_120px_minmax(0,1fr)_180px_160px] gap-4 px-5 py-2.5 bg-surface border-b border-border">
+                  <button
+                    onClick={() => toggleFeedbackSort('rating')}
+                    className="text-xs text-muted uppercase tracking-widest text-left hover:text-gold transition-colors flex items-center gap-1"
+                  >
+                    Rating
+                    {feedbackSort.col === 'rating' && (
+                      <span aria-hidden="true">{feedbackSort.order === 'desc' ? '↓' : '↑'}</span>
+                    )}
+                  </button>
+                  <span className="text-xs text-muted uppercase tracking-widest">Category</span>
+                  <span className="text-xs text-muted uppercase tracking-widest">Message</span>
+                  <span className="text-xs text-muted uppercase tracking-widest">User</span>
+                  <button
+                    onClick={() => toggleFeedbackSort('date')}
+                    className="text-xs text-muted uppercase tracking-widest text-left hover:text-gold transition-colors flex items-center gap-1"
+                  >
+                    Date
+                    {feedbackSort.col === 'date' && (
+                      <span aria-hidden="true">{feedbackSort.order === 'desc' ? '↓' : '↑'}</span>
+                    )}
+                  </button>
+                </div>
+
+                {feedback.length === 0 && (
+                  <p className="px-5 py-8 text-secondary text-sm">No feedback yet.</p>
+                )}
+
+                {feedback.map(f => (
+                  <div
+                    key={f.id}
+                    className="grid grid-cols-[80px_120px_minmax(0,1fr)_180px_160px] gap-4 px-5 py-4 border-b border-border last:border-0 hover:bg-elevated/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-0.5 self-start pt-0.5">
+                      {[1,2,3,4,5].map(n => (
+                        <svg
+                          key={n}
+                          width="13" height="13"
+                          viewBox="0 0 24 24"
+                          fill={n <= f.rating ? 'currentColor' : 'none'}
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={n <= f.rating ? 'text-gold' : 'text-border'}
+                          aria-hidden="true"
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-xs text-secondary self-start pt-0.5 capitalize">
+                      {f.category.replace('_', ' ')}
+                    </span>
+                    <p className="text-sm text-text leading-relaxed">{f.message}</p>
+                    <span className="font-mono text-xs text-muted self-start pt-0.5 truncate">
+                      {f.user_email || f.user_id}
+                    </span>
+                    <span className="font-mono text-xs text-muted self-start pt-0.5">
+                      {formatDateTime(f.created_at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
 
       </main>
