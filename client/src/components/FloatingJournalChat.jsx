@@ -100,18 +100,19 @@ export default function FloatingJournalChat({
       {/* Chat panel */}
       {isOpen && (
         <div
+          style={{ background: '#161616' }}
           className={[
-            'fixed z-50 flex flex-col overflow-hidden bg-surface shadow-2xl',
-            // Mobile: bottom sheet (sits above viewport bottom — BottomNav shows behind overlay)
-            'inset-x-0 bottom-0 max-h-[78vh] rounded-t-2xl border-t border-x border-border',
+            'fixed z-50 flex flex-col overflow-hidden shadow-2xl',
+            // Mobile: bottom sheet
+            'inset-x-0 bottom-0 max-h-[78vh] rounded-t-2xl border-t border-x border-border/70',
             // Desktop: compact corner panel
-            'sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[500px] sm:max-h-none sm:rounded-2xl sm:border',
+            'sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[500px] sm:max-h-none sm:rounded-2xl sm:border sm:border-border/70',
           ].join(' ')}
           role="dialog"
           aria-label="Chat with your journal"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
+          <div className="flex items-center justify-between px-4 h-12 border-b border-border/60 shrink-0">
             <div className="flex items-center gap-2">
               <span className="font-heading text-gold text-sm leading-none">✦</span>
               <h2 className="text-sm font-medium text-text">Chat with your journal</h2>
