@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import AuthNavbar from '../components/AuthNavbar'
@@ -14,6 +14,11 @@ export default function ResetPassword() {
   const [confirm, setConfirm]   = useState('')
   const [error, setError]       = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Holds the recovery session tokens captured on PASSWORD_RECOVERY.
+  // StrictMode double-mount causes a subsequent SIGNED_IN event that overwrites
+  // the active session, making updateUser() fail with 422. We re-apply these
+  // tokens right before calling updateUser to restore the recovery context.
+  const recoveryTokens = useRef(null)
 
   useEffect(() => {
     let mounted = true
@@ -40,8 +45,15 @@ export default function ResetPassword() {
 
     init()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (mounted && event === 'PASSWORD_RECOVERY') setView('ready')
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryTokens.current = {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }
+        setView('ready')
+      }
     })
 
     // 4. Last resort: if nothing fires within 15 s the link is expired or invalid
@@ -70,6 +82,11 @@ export default function ResetPassword() {
     }
 
     setSubmitting(true)
+    // Restore the recovery session in case a subsequent SIGNED_IN event (e.g.
+    // from StrictMode double-mount) overwrote it before the user submitted.
+    if (recoveryTokens.current) {
+      await supabase.auth.setSession(recoveryTokens.current)
+    }
     const { error } = await supabase.auth.updateUser({ password })
     setSubmitting(false)
 
