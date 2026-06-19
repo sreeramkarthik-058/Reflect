@@ -438,7 +438,7 @@ export default function Today() {
         </div>
       </div>
 
-      <FloatingJournalChat />
+      <FloatingJournalChat hideMobile />
       <BottomNav />
     </div>
   )
