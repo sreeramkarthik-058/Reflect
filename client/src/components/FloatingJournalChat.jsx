@@ -103,12 +103,12 @@ export default function FloatingJournalChat({
           style={{ background: '#1A1A1A' }}
           className={[
             'fixed z-50 flex flex-col overflow-hidden',
-            // Mobile: bottom sheet — gold top border, upward shadow, rounded top corners
-            'inset-x-0 bottom-0 max-h-[78vh] rounded-t-2xl',
+            // Mobile: full-screen sheet — rounded top corners, gold border, upward shadow
+            'inset-0 rounded-t-2xl',
             'border-t border-x border-[#D4A96A]/30',
             'shadow-[0_-4px_20px_rgba(0,0,0,0.5)]',
-            // Desktop: compact corner panel
-            'sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[500px] sm:max-h-none sm:rounded-2xl sm:border sm:border-border/70 sm:shadow-2xl',
+            // Desktop: compact corner panel (reset all inset then position precisely)
+            'sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[500px] sm:rounded-2xl sm:border sm:border-border/70 sm:shadow-2xl',
           ].join(' ')}
           role="dialog"
           aria-label="Chat with your journal"
